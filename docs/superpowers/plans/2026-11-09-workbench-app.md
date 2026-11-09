@@ -1147,6 +1147,12 @@ git commit -m "feat: add jwt authentication and auth api"
 
 ## Task 4: 用户 CRUD
 
+> **实现注意点**
+>
+> 1. **无角色用户的列表查询**：`UserService.GetPagedAsync` 的投影里写了 `u.Role!.Name`。用户可以**不分配角色**（`RoleId` 为 null），此时 `u.Role` 是 null。EF Core 会把 `u.Role.Name` 翻译成 LEFT JOIN 并得到 null，`UserDto.RoleName` 是 `string?` 所以能接住 —— 但这依赖 EF 的翻译行为，**必须用一个「无角色用户」实测**：新增一个 `roleId` 为 null 的用户后，`GET /api/users` 仍返回 200，该行的 `roleName` 为 null，且列表接口不抛异常。
+> 2. **`page`/`pageSize` 钳制**：全局约束要求 `page` 默认 1、`pageSize` 默认 20、**上限 100**。简报给的 `GetPagedAsync` 代码已含 `Math.Min(query.PageSize, MaxPageSize)`，照做即可；**再补一条断言**：请求 `pageSize=500` 时，响应里的 `pageSize` 字段应为 100（不是 500），`total` 不受影响。
+> 3. **`DELETE /api/users/{id}` 删除自己**：`DeleteAsync(id, currentUserId)` 在 id == currentUserId 时抛 `BusinessException(400, "不能删除当前登录用户")`。简报测试预期写的是 400，确认一致即可。
+
 **Files:**
 - Create: `backend/AITrainingDemo.Api/Dtos/UserDtos.cs`
 - Create: `backend/AITrainingDemo.Api/Services/IUserService.cs`
