@@ -1074,7 +1074,7 @@ public class AuthController(IAuthService authService) : ControllerBase
 
 - [ ] **Step 6: 在 `Program.cs` 注册 JWT 鉴权**
 
-在 `backend/AITrainingDemo.Api/Program.cs` 中，把 `builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();` 之后的内容替换为以下代码（同时在文件顶部补 `using Microsoft.AspNetCore.Authentication.JwtBearer;` 与 `using Microsoft.IdentityModel.Tokens;`）：
+在 `backend/AITrainingDemo.Api/Program.cs` 中，在 `builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();` 这一行**之后追加**以下代码块（**保留文件中已有的其他所有行，不要删除或改动**；同时在文件顶部补 `using Microsoft.AspNetCore.Authentication.JwtBearer;`、`using Microsoft.IdentityModel.Tokens;`、`using System.Text;`）：
 
 ```csharp
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -2037,7 +2037,7 @@ git commit -m "feat: add role crud api with reference protection"
 - Create: `backend/AITrainingDemo.Api/Controllers/DashboardController.cs`
 - Create: `backend/AITrainingDemo.Tests/DashboardApiTests.cs`
 - Modify: `backend/AITrainingDemo.Api/Program.cs`
-- Modify: `backend/AITrainingDemo.Api/AITrainingDemo.Api.csproj`（设置监听地址）
+- Modify: `backend/AITrainingDemo.Api/Properties/launchSettings.json`（固定监听地址 5080）
 
 **Interfaces:**
 - Consumes: Task 2/3 产出。
@@ -2783,9 +2783,9 @@ git commit -m "feat: scaffold frontend with axios, pinia, router and login page"
 ## Task 8: 应用布局与工作台首页
 
 **Files:**
-- Create: `frontend/src/layout/AppLayout.vue`
-- Create: `frontend/src/views/DashboardView.vue`
-- Modify: `frontend/src/api/roles.ts`（补 `dashboardApi`）—— 实际放在 `frontend/src/api/dashboard.ts`
+- Create: `frontend/src/api/dashboard.ts`
+- Create（覆盖 Task 7 的占位组件）: `frontend/src/layout/AppLayout.vue`
+- Create（覆盖 Task 7 的占位组件）: `frontend/src/views/DashboardView.vue`
 
 **Interfaces:**
 - Consumes: `useAuthStore()`、Task 6 的 `GET /api/dashboard/stats`。
