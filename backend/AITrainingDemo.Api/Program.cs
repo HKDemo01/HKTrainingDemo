@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
+builder.Services.AddScoped<ApiExceptionFilter>();
+
+builder.Services.AddControllers(options => options.Filters.AddService<ApiExceptionFilter>())
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = _ =>

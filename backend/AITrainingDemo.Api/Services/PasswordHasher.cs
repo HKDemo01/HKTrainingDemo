@@ -35,6 +35,13 @@ public class PasswordHasher : IPasswordHasher
             return false;
         }
 
+        // 存储哈希畸形（如 "salt." 第二段为空）时直接判定失败：
+        // 期望哈希长度为 0 时 Pbkdf2 返回空数组，FixedTimeEquals(empty, empty) 恒为 true，会导致任意口令都能"验证通过"
+        if (salt.Length == 0 || expected.Length == 0)
+        {
+            return false;
+        }
+
         var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, HashAlgorithmName.SHA256, expected.Length);
         return CryptographicOperations.FixedTimeEquals(actual, expected);
     }
