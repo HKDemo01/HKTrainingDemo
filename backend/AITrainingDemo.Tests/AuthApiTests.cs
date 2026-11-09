@@ -109,6 +109,35 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    /// <summary>
+    /// 未认证时由授权中间件直接返回 401（不经过异常过滤器），
+    /// 响应体仍应保持 ApiResult 形状，避免前端拿到空 body。
+    /// </summary>
+    [Fact]
+    public async Task Me_WithoutToken_Returns401WithUnifiedApiResultBody()
+    {
+        var response = await _client.GetAsync("/api/auth/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(401, body.GetProperty("code").GetInt32());
+        Assert.False(string.IsNullOrWhiteSpace(body.GetProperty("message").GetString()));
+        Assert.True(body.TryGetProperty("data", out _));
+    }
+
+    [Fact]
+    public async Task Me_WithGarbageToken_Returns401WithUnifiedApiResultBody()
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "not-a-real-token");
+
+        var response = await client.GetAsync("/api/auth/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(401, body.GetProperty("code").GetInt32());
+    }
+
     [Fact]
     public async Task Me_WithGarbageToken_Returns401()
     {
