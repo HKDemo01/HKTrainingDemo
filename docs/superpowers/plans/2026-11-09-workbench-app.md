@@ -2278,13 +2278,17 @@ git commit -m "feat: add dashboard stats api and cors setup"
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
-npm create vite@latest frontend -- --template vue-ts
+npm create vite@latest frontend -- --template vue-ts --yes
 cd frontend
 npm install
-npm install element-plus @element-plus/icons-vue vue-router pinia axios
+npm install element-plus@^2.14.8 @element-plus/icons-vue@^2.3.2 vue-router@^4.6.4 pinia@^3.0.4 axios@^1.21.0
 ```
 
-> 若 `npm create vite` 出现交互式提问：Package name 填 `frontend`，框架选 `Vue`，语言选 `TypeScript`，其余用默认。
+> ⚠️ **版本必须显式指定**：registry 上 `vue-router` 的 `latest` 已经是 **5.x**、`pinia` 的 `latest` 是 **4.x**，而项目规范（`.claude/CLAUDE.md` §1 与 §8）明确要求 **Vue Router 4**。裸写 `npm install vue-router` 会装到 v5，**违反规范**。请按上面给出的显式版本号安装。
+>
+> 已实测（2026-11-09，本机 npm registry = registry.npmmirror.com）：`npm create vite@latest frontend -- --template vue-ts --yes` 非交互可用，create-vite 9.3.4 生成 `index.html` / `package.json` / `vite.config.ts` / `tsconfig*.json` / `src/`，无任何交互输入。安装后 `npm ls --depth=0` 得到：vue 3.5.45、vue-router 4.6.4、pinia 3.0.4、element-plus 2.14.8、axios 1.21.0、vite 8.3.7、typescript 6.0.3、vue-tsc 3.3.14。
+>
+> 脚手架模板的 `build` 脚本是 `vue-tsc -b && vite build`，**含 TypeScript 类型检查** —— 任何类型错误都会让构建失败。模板自带的示例代码（`src/components/HelloWorld.vue`、`src/style.css`、`src/assets/vue.svg`、`src/types.ts`）按需删除或替换。
 
 - [ ] **Step 2: 配置 `vite.config.ts`**
 
