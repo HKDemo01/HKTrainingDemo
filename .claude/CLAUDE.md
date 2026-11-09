@@ -1,6 +1,6 @@
 # 项目规范 · AITrainingDemo
 
-本文件是本仓库的项目级规范，继承全局规范 `C:\Users\hua.w\.claude\CLAUDE.md`。
+本文件是本仓库的项目级规范，继承全局规范 `~/.claude/CLAUDE.md`。
 全局规范中的全部硬性规则（尤其「输出语言必须为简体中文」「最小代码」「手术式修改」）在本项目同样生效；本文件只做**项目专属补充**。
 
 ## 1. 技术栈（不得擅自替换）
@@ -52,3 +52,22 @@ frontend/src/                  api / stores / router / layout / views
 
 - 提交信息用 Conventional Commits：`feat:` / `fix:` / `chore:` / `docs:` / `refactor:`。
 - 所有界面文案、代码注释、提交信息用**简体中文**；标识符与 API 路径保持英文。
+
+## 7. 端口与地址约定
+
+- 后端固定监听 `http://localhost:5080`（权威来源：`backend/AITrainingDemo.Api/Properties/launchSettings.json` 的 `applicationUrl`）。
+- 前端固定监听 `http://localhost:5173`。
+- 后端 CORS 允许来源固定为 `http://localhost:5173`。
+- **禁止在组件与 `src/api/*.ts` 中硬编码 `http://localhost:5080`**：前端一律使用相对路径 `/api`，由 Vite proxy 转发到后端。
+
+## 8. 依赖白名单
+
+- 后端 NuGet **仅允许**：`Microsoft.EntityFrameworkCore.Sqlite`、`Microsoft.EntityFrameworkCore.Design`、`Microsoft.AspNetCore.Authentication.JwtBearer`、`System.IdentityModel.Tokens.Jwt`。
+- 测试项目额外允许：`Microsoft.AspNetCore.Mvc.Testing`、`Microsoft.NET.Test.Sdk`、`xunit`、`xunit.runner.visualstudio`。
+- **不引入 Swagger / OpenAPI**（`Swashbuckle`、`Microsoft.AspNetCore.OpenApi` 均不允许）。
+- 前端依赖固定为：Vue 3 + TypeScript + Vite + Element Plus + Vue Router 4 + Pinia + Axios。
+
+## 9. 前端 locale 与种子账号
+
+- Element Plus 必须配置 `zhCn` locale（`app.use(ElementPlus, { locale: zhCn })`），界面语言固定为中文。
+- 种子账号固定：`admin/admin123`（管理员）、`editor/editor123`（编辑者）。
