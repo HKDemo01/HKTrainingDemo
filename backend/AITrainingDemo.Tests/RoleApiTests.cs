@@ -20,10 +20,16 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var data = body.GetProperty("data");
-        Assert.True(data.GetProperty("total").GetInt32() >= 2);
         var items = data.GetProperty("items");
-        Assert.True(items.GetArrayLength() >= 2);
-        Assert.True(items[0].TryGetProperty("userCount", out _));
+        // 种子角色 admin / editor 必须出现在结果里 —— 「查询恒空」的实现也会被这条断言抓住
+        var codes = items.EnumerateArray().Select(i => i.GetProperty("code").GetString()).ToArray();
+        Assert.Contains("admin", codes);
+        Assert.Contains("editor", codes);
+        // 命中总数与返回条数必须自洽（默认每页 20 条）
+        Assert.Equal(Math.Min(data.GetProperty("total").GetInt32(), 20), items.GetArrayLength());
+        // userCount 必须是可读的数字，且 admin 角色至少挂着 admin 用户
+        var adminItem = items.EnumerateArray().First(i => i.GetProperty("code").GetString() == "admin");
+        Assert.True(adminItem.GetProperty("userCount").GetInt32() >= 1);
     }
 
     [Fact]
@@ -37,7 +43,13 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var data = body.GetProperty("data");
         Assert.Equal(JsonValueKind.Array, data.ValueKind);
-        Assert.True(data.GetArrayLength() >= 2);
+        // 种子角色必须在下拉选项里，且选项字段齐全
+        var codes = data.EnumerateArray().Select(i => i.GetProperty("code").GetString()).ToArray();
+        Assert.Contains("admin", codes);
+        Assert.Contains("editor", codes);
+        var option = data.EnumerateArray().First(i => i.GetProperty("code").GetString() == "admin");
+        Assert.Equal(JsonValueKind.Number, option.GetProperty("id").ValueKind);
+        Assert.False(string.IsNullOrWhiteSpace(option.GetProperty("name").GetString()));
     }
 
     [Fact]

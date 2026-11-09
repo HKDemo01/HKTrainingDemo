@@ -29,7 +29,14 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, body.GetProperty("code").GetInt32());
         var data = body.GetProperty("data");
-        Assert.True(data.GetProperty("total").GetInt32() >= 2);
+        var items = data.GetProperty("items");
+        var total = data.GetProperty("total").GetInt32();
+        // 种子账号 admin / editor 必须出现在结果里 —— 「查询恒空」的实现也会被这条断言抓住
+        var usernames = items.EnumerateArray().Select(i => i.GetProperty("username").GetString()).ToArray();
+        Assert.Contains("admin", usernames);
+        Assert.Contains("editor", usernames);
+        // 返回条数必须与命中总数、每页条数三者自洽
+        Assert.Equal(Math.Min(total, 10), items.GetArrayLength());
         Assert.Equal(10, data.GetProperty("pageSize").GetInt32());
     }
 
@@ -157,8 +164,11 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var data = body.GetProperty("data");
         Assert.Equal(100, data.GetProperty("pageSize").GetInt32());
-        // 钳制只影响分页大小，不影响命中总数
-        Assert.True(data.GetProperty("total").GetInt32() >= 2);
+        // 钳制只影响分页大小，不影响命中总数；且命中总数必须与实际返回条数自洽
+        var total = data.GetProperty("total").GetInt32();
+        var items = data.GetProperty("items");
+        Assert.True(total >= 2);
+        Assert.Equal(Math.Min(total, 100), items.GetArrayLength());
     }
 
     [Fact]

@@ -18,7 +18,8 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = query.PageSize < 1 ? 20 : Math.Min(query.PageSize, MaxPageSize);
 
-        IQueryable<User> q = db.Users.Include(u => u.Role);
+        // 查询以 DTO 投影收尾，EF Core 会在投影里自动生成 Role 的 LEFT JOIN，无需 Include
+        IQueryable<User> q = db.Users;
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -136,8 +137,8 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
             user.PasswordHash = hasher.Hash(request.Password);
         }
 
-        // 用户名不可修改，这里不会触发唯一索引冲突，直接保存
-        await db.SaveChangesAsync();
+        // 用户名不可修改，这里不会触发唯一索引冲突；但角色可能在检查之后被并发删除
+        await SaveChangesAsync();
 
         return await GetByIdAsync(user.Id);
     }
@@ -160,7 +161,8 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
     }
 
     /// <summary>
-    /// 保存变更；并发写入撞上唯一索引时转成 409，避免把数据库异常冒成 500。
+    /// 保存变更；并发写入撞上唯一索引时转成 409，引用已消失的角色时转成 400，
+    /// 避免把数据库异常冒成 500。
     /// 当前 Users 表只有一个唯一索引（Username），因此任何唯一冲突都只能是用户名重复。
     /// </summary>
     private async Task SaveChangesAsync()
@@ -169,9 +171,14 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         {
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true)
+        catch (DbUpdateException ex) when (SqliteConstraint.IsUnique(ex))
         {
             throw new BusinessException(409, "用户名已存在");
+        }
+        catch (DbUpdateException ex) when (SqliteConstraint.IsForeignKey(ex))
+        {
+            // 检查角色存在与保存之间存在竞态窗口：角色被并发删除后，用户引用的外键会失效
+            throw new BusinessException(400, "角色不存在");
         }
     }
 

@@ -152,7 +152,7 @@ public class RoleService(AppDbContext db) : IRoleService
         {
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY constraint failed", StringComparison.OrdinalIgnoreCase) == true)
+        catch (DbUpdateException ex) when (SqliteConstraint.IsForeignKey(ex))
         {
             // 检查与删除之间存在竞态窗口：并发给该角色挂上用户时，删除会撞外键约束
             throw new BusinessException(409, "该角色已被引用，无法删除");
@@ -169,7 +169,7 @@ public class RoleService(AppDbContext db) : IRoleService
         {
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true)
+        catch (DbUpdateException ex) when (SqliteConstraint.IsUnique(ex))
         {
             throw new BusinessException(409, "角色编码已存在");
         }
