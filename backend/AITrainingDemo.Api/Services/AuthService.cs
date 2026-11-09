@@ -24,7 +24,7 @@ public class AuthService(AppDbContext db, IPasswordHasher hasher, IConfiguration
             throw new BusinessException(401, "用户名或密码错误");
         }
 
-        var expiresAt = DateTime.UtcNow.AddHours(8);
+        var expiresAt = DateTime.UtcNow.AddHours(GetExpiresHours());
         var claims = new List<Claim>
         {
             new("sub", user.Id.ToString()),
@@ -62,5 +62,11 @@ public class AuthService(AppDbContext db, IPasswordHasher hasher, IConfiguration
         }
 
         return new LoginUserInfo(user.Id, user.Username, user.DisplayName, user.Role?.Name);
+    }
+
+    /// <summary>Token 有效期（小时），取自配置 Jwt:ExpiresHours，缺省或非法时回退 8 小时。</summary>
+    private int GetExpiresHours()
+    {
+        return int.TryParse(configuration["Jwt:ExpiresHours"], out var hours) && hours > 0 ? hours : 8;
     }
 }
