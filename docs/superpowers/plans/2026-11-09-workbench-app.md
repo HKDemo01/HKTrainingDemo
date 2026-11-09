@@ -1082,6 +1082,8 @@ public class AuthController(IAuthService authService) : ControllerBase
 
 在 `backend/AITrainingDemo.Api/Program.cs` 中，在 `builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();` 这一行**之后追加**以下代码块（**保留文件中已有的其他所有行，不要删除或改动**；同时在文件顶部补 `using Microsoft.AspNetCore.Authentication.JwtBearer;`、`using Microsoft.IdentityModel.Tokens;`、`using System.Text;`）：
 
+> ⚠️ **注意**：下面代码块第一行 `builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();` 只是**定位锚点**，表示「从这一行往后插入」——**文件里已经有一行完全相同的注册，不要再写第二遍**（重复注册会覆盖同一个服务，虽不报错但属冗余）。实际需要**新增**的是从 `builder.Services.AddScoped<IAuthService, AuthService>();` 开始的全部内容。
+
 ```csharp
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -2170,6 +2172,16 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
 ```csharp
 app.UseCors();
 ```
+
+> ⚠️ **中间件顺序（关键）**：Task 3 已经在 `app.MapControllers();` 之前插入了 `app.UseAuthentication();` 和 `app.UseAuthorization();`。`app.UseCors();` **必须放在 `app.UseAuthentication()` 之前**，不能简单地追加到 `app.MapControllers();` 的紧前位置 —— 否则 CORS 预检（OPTIONS，不带 Authorization 头）会先被授权中间件拦成 401，浏览器直接判定跨域失败。
+>
+> 正确做法：把 `app.UseCors();` 放在 `app.UseAuthentication();` 的**上一行**。最终顺序应为：
+> ```
+> app.UseCors();
+> app.UseAuthentication();
+> app.UseAuthorization();
+> app.MapControllers();
+> ```
 
 - [ ] **Step 5: 固定后端监听地址为 5080**
 
