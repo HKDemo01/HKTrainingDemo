@@ -813,6 +813,12 @@ git commit -m "feat: scaffold backend project with entity, dbcontext and seed da
 
 ## Task 3: JWT 登录鉴权
 
+> **结转项（来自 Task 2 审查的裁决，必须遵守）**
+>
+> 1. **NuGet 版本**：新增 `Microsoft.AspNetCore.Authentication.JwtBearer` 时**必须选用无漏洞的 10.0.x 版本**（与 EF Core 已升级到的 `10.0.14` 保持一致的补丁线）。**不要**盲目使用本计划示例的 `10.0.0` —— Task 2 已确认 `10.0.0` 会带入高危传递依赖。装完包后运行 `dotnet list package --vulnerable --include-transitive` 自检，无告警才算通过。
+> 2. **异常过滤器注册路径唯一**：`Program.cs` 中 `ApiExceptionFilter` 的注册**只保留一条路径**（`builder.Services.AddScoped<ApiExceptionFilter>();` + `options.Filters.AddService<ApiExceptionFilter>();`）。**不得**再出现 `options.Filters.Add<ApiExceptionFilter>()`，否则异常会被处理两次。
+> 3. **补一条异常映射测试**：新增自动化测试，断言 Service 抛出的 `BusinessException(code, message)` 经 `ApiExceptionFilter` 后，HTTP 状态码 == `code`，且响应体是 `ApiResult` 形状（`code`/`message`/`data` 三字段，`code` 等于业务码、`message` 一致）。
+
 **Files:**
 - Create: `backend/AITrainingDemo.Api/Dtos/AuthDtos.cs`
 - Create: `backend/AITrainingDemo.Api/Services/IAuthService.cs`
@@ -2207,6 +2213,14 @@ git commit -m "feat: add dashboard stats api and cors setup"
 ---
 
 ## Task 7: 前端脚手架、axios 层与登录页
+
+> **实现注意点**
+>
+> `src/api/request.ts` → `src/stores/auth.ts` → `src/api/auth.ts` → `src/api/request.ts` 构成**循环依赖**，同时 `request.ts` 还引入了 `@/router`，而 `router/index.ts` 又引入 `stores/auth`。ESM 下这通常能工作（引用都在函数体内、模块求值期不触发），但**必须实测**：构建通过 ≠ 运行时可用。
+>
+> 因此本任务除 `npm run build` 外，**必须**额外做一次运行时验证：启动 `npm run dev`，确认登录页能加载、`/login` 路由不白屏、控制台无 `Cannot access '...' before initialization` 之类的循环依赖报错。若确实报错，用最小改动打破循环（例如把 `router` 的引用改成惰性 `import('@/router')`，或把 store 的取用改成在拦截器回调内动态获取）。
+>
+> 另：`npm create vite@latest` 在非交互终端可能卡住。**优先手工创建** `package.json` / `vite.config.ts` / `index.html` / `tsconfig*.json` 等文件，或使用非交互参数；确保 `npm install` 与 `npm run build` 都能跑通。
 
 **Files:**
 - Create: `frontend/package.json`（脚手架生成后修改）
@@ -3694,6 +3708,13 @@ dotnet run
 ```
 
 后端监听 `http://localhost:5080`。首次启动会自动创建 `App_Data/workbench.db` 并写入种子数据。
+
+> ⚠️ 必须在 `backend/AITrainingDemo.Api` 目录下启动后端。SQLite 连接串中的路径是相对当前工作目录的，从仓库根目录启动会把数据库建到错误位置。
+
+### 生产部署注意
+
+- **必须用环境变量覆盖 `Jwt:SigningKey`**，例如 `Jwt__SigningKey`。仓库内 `appsettings.json` 中的签名密钥仅供开发演示。
+- **`EnsureCreated()` 不会演进既有表结构**。修改实体字段后需要删除 `App_Data/workbench.db` 重建数据库，种子数据会自动重新写入。
 
 ## 启动前端
 
