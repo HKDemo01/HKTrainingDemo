@@ -38,7 +38,7 @@ dotnet run
 
 ### 生产部署注意
 
-- **必须用环境变量覆盖 `Jwt:SigningKey`**，例如 `Jwt__SigningKey`。仓库内 `appsettings.json` 中的签名密钥仅供开发演示。
+- **必须用环境变量覆盖 `Jwt:SigningKey`**，例如 `Jwt__SigningKey`。仓库内的签名密钥只存在于 `appsettings.Development.json`（仅开发环境加载），生产环境若未提供该配置，后端会**拒绝启动**并给出明确报错。
 - **`EnsureCreated()` 不会演进既有表结构**。修改实体字段后需要删除 `App_Data/workbench.db` 重建数据库，种子数据会自动重新写入。
 
 ## 启动前端
