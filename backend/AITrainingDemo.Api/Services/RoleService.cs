@@ -99,7 +99,7 @@ public class RoleService(AppDbContext db) : IRoleService
         };
 
         db.Roles.Add(role);
-        await SaveChangesAsync("角色编码已存在");
+        await SaveChangesAsync();
 
         return new RoleDto(role.Id, role.Code, role.Name, role.Description, 0, role.CreatedAt);
     }
@@ -125,9 +125,11 @@ public class RoleService(AppDbContext db) : IRoleService
         role.Name = request.Name.Trim();
         role.Description = request.Description;
 
-        await SaveChangesAsync("角色编码已存在");
+        // 角色编码不可修改，这里不会触发唯一索引冲突，直接保存
+        await db.SaveChangesAsync();
 
-        return new RoleDto(role.Id, role.Code, role.Name, role.Description, role.Users.Count, role.CreatedAt);
+        return new RoleDto(role.Id, role.Code, role.Name, role.Description, role.Users.Count, role.CreatedAt)
+            with { CreatedAt = DateTime.SpecifyKind(role.CreatedAt, DateTimeKind.Utc) };
     }
 
     public async Task DeleteAsync(int id)
@@ -145,13 +147,23 @@ public class RoleService(AppDbContext db) : IRoleService
         }
 
         db.Roles.Remove(role);
-        await db.SaveChangesAsync();
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("FOREIGN KEY constraint failed", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            // 检查与删除之间存在竞态窗口：并发给该角色挂上用户时，删除会撞外键约束
+            throw new BusinessException(409, "该角色已被引用，无法删除");
+        }
     }
 
     /// <summary>
     /// 保存变更；并发写入撞上唯一索引时转成 409，避免把数据库异常冒成 500。
+    /// 当前 Roles 表只有一个唯一索引（Code），因此任何唯一冲突都只能是角色编码重复。
     /// </summary>
-    private async Task SaveChangesAsync(string duplicateMessage)
+    private async Task SaveChangesAsync()
     {
         try
         {
@@ -159,7 +171,7 @@ public class RoleService(AppDbContext db) : IRoleService
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true)
         {
-            throw new BusinessException(409, duplicateMessage);
+            throw new BusinessException(409, "角色编码已存在");
         }
     }
 }

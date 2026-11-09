@@ -141,11 +141,55 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
     {
         var client = await CreateAuthenticatedClientAsync();
 
+        var first = await client.GetAsync("/api/roles?page=1&pageSize=100");
+        var firstTotal = (await first.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("total").GetInt32();
+
         var response = await client.GetAsync("/api/roles?page=2147483647&pageSize=100");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, body.GetProperty("data").GetProperty("items").GetArrayLength());
+        // 越界页只影响 items，命中总数不能被一并清零
+        Assert.Equal(firstTotal, body.GetProperty("data").GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task CreateRole_CreatedAt_IsMarkedAsUtc()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("tzrole01", "时区角色", null));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.EndsWith("Z", body.GetProperty("data").GetProperty("createdAt").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UpdateRole_CreatedAt_IsMarkedAsUtc()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var created = await CreateRoleAsync(client, "tzupdate01");
+
+        var response = await client.PutAsJsonAsync($"/api/roles/{created}",
+            new UpdateRoleRequest("改名角色", null));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.EndsWith("Z", body.GetProperty("data").GetProperty("createdAt").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateRole_WithExactly50CharCode_Returns200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("c" + new string('c', 49), "边界编码角色", null));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

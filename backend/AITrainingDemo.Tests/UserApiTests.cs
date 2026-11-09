@@ -166,11 +166,55 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
     {
         var client = await CreateAuthenticatedClientAsync();
 
+        var first = await client.GetAsync("/api/users?page=1&pageSize=100");
+        var firstTotal = (await first.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("total").GetInt32();
+
         var response = await client.GetAsync("/api/users?page=2147483647&pageSize=100");
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, body.GetProperty("data").GetProperty("items").GetArrayLength());
+        // 越界页只影响 items，命中总数不能被一并清零
+        Assert.Equal(firstTotal, body.GetProperty("data").GetProperty("total").GetInt32());
+    }
+
+    [Fact]
+    public async Task CreateUser_CreatedAt_IsMarkedAsUtc()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "tzuser01", "Test@123456", "时区用户", null, null, true));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.EndsWith("Z", body.GetProperty("data").GetProperty("createdAt").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UpdateUser_CreatedAt_IsMarkedAsUtc()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var created = await CreateUserAsync(client, "tzupdate01");
+
+        var response = await client.PutAsJsonAsync($"/api/users/{created}", new UpdateUserRequest(
+            null, "改名用户", null, null, true));
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.EndsWith("Z", body.GetProperty("data").GetProperty("createdAt").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateUser_WithExactly50CharUsername_Returns200()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "u" + new string('u', 49), "Test@123456", "边界用户名", null, null, true));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

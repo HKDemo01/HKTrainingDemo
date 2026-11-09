@@ -101,7 +101,7 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         };
 
         db.Users.Add(user);
-        await SaveChangesAsync("用户名已存在");
+        await SaveChangesAsync();
 
         return await GetByIdAsync(user.Id);
     }
@@ -136,7 +136,8 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
             user.PasswordHash = hasher.Hash(request.Password);
         }
 
-        await SaveChangesAsync("用户名已存在");
+        // 用户名不可修改，这里不会触发唯一索引冲突，直接保存
+        await db.SaveChangesAsync();
 
         return await GetByIdAsync(user.Id);
     }
@@ -160,8 +161,9 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 
     /// <summary>
     /// 保存变更；并发写入撞上唯一索引时转成 409，避免把数据库异常冒成 500。
+    /// 当前 Users 表只有一个唯一索引（Username），因此任何唯一冲突都只能是用户名重复。
     /// </summary>
-    private async Task SaveChangesAsync(string duplicateMessage)
+    private async Task SaveChangesAsync()
     {
         try
         {
@@ -169,7 +171,7 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         }
         catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true)
         {
-            throw new BusinessException(409, duplicateMessage);
+            throw new BusinessException(409, "用户名已存在");
         }
     }
 
@@ -198,6 +200,7 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
             throw new BusinessException(404, "用户不存在");
         }
 
-        return new UserDto(user.Id, user.Username, user.DisplayName, user.Email, user.RoleId, user.Role?.Name, user.Enabled, user.CreatedAt);
+        return new UserDto(user.Id, user.Username, user.DisplayName, user.Email, user.RoleId, user.Role?.Name, user.Enabled, user.CreatedAt)
+            with { CreatedAt = DateTime.SpecifyKind(user.CreatedAt, DateTimeKind.Utc) };
     }
 }

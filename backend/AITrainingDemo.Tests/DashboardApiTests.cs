@@ -32,6 +32,24 @@ public class DashboardApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.True(data.GetProperty("roleCount").GetInt32() >= 2);
     }
 
+    /// <summary>
+    /// CORS 预检（OPTIONS）必须由 CORS 中间件直接放行，
+    /// 不能落到授权中间件上被拦成 401 —— 这是前后端分离联调的前提。
+    /// </summary>
+    [Fact]
+    public async Task Preflight_Returns204WithAllowedOrigin()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Options, "/api/dashboard/stats");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+        request.Headers.Add("Access-Control-Request-Headers", "authorization");
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Contains("http://localhost:5173", response.Headers.GetValues("Access-Control-Allow-Origin"));
+    }
+
     private async Task<HttpClient> CreateAuthenticatedClientAsync()
     {
         var client = factory.CreateClient();
