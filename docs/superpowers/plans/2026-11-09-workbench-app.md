@@ -804,7 +804,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 ```
 
-Expected: 全部 PASS（4 个用例）。
+Expected: 全部 PASS（6 个用例）。
 
 - [ ] **Step 15: 提交**
 
@@ -1682,7 +1682,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "FullyQualifiedName~UserApiTests"
 ```
 
-Expected: 15 个用例全部 PASS。
+Expected: 20 个用例全部 PASS。
 
 - [ ] **Step 8: 提交**
 
@@ -2124,7 +2124,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "FullyQualifiedName~RoleApiTests"
 ```
 
-Expected: 10 个用例全部 PASS。
+Expected: 17 个用例全部 PASS。
 
 - [ ] **Step 8: 提交**
 
@@ -2352,7 +2352,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 ```
 
-Expected: 全部 PASS（Task 2 的 6 + Task 3 的 10 + Task 4 的 15 + Task 5 的 10 + Task 6 的 2 + 异常过滤器 1 = 44 个用例）。
+Expected: 全部 PASS（Task 2 的 6 + Task 3 的 10 + Task 4 的 20 + Task 5 的 17 + Task 6 的 2 + 异常过滤器 1 = 56 个用例）。
 
 - [ ] **Step 7: 提交**
 
@@ -2950,7 +2950,7 @@ Expected: 构建成功，无 TypeScript 报错。
 
 ```bash
 git add frontend/
-git commit -m "feat: scaffold frontend with axios, pinia, router and login page"
+git commit -m "feat: 搭建前端脚手架与登录页"
 ```
 
 ---
@@ -3214,7 +3214,7 @@ Expected: 构建成功。
 
 ```bash
 git add frontend/
-git commit -m "feat: add app layout and dashboard home"
+git commit -m "feat: 新增应用布局与工作台首页"
 ```
 
 ---
@@ -3532,7 +3532,7 @@ Expected: 构建成功。
 
 ```bash
 git add frontend/
-git commit -m "feat: add user management page"
+git commit -m "feat: 新增用户管理页"
 ```
 
 ---
@@ -3779,7 +3779,7 @@ Expected: 构建成功。
 
 ```bash
 git add frontend/
-git commit -m "feat: add role management page"
+git commit -m "feat: 新增角色管理页"
 ```
 
 ---
@@ -3923,6 +3923,11 @@ npm run dev
 | admin | admin123 | 管理员 |
 | editor | editor123 | 编辑者 |
 
+## 已知限制
+
+- **角色编码区分大小写**：SQLite 唯一索引默认按二进制比较，`ADMIN` 与 `admin` 视为两个不同角色；关键字搜索同样区分大小写。设计文档未定义编码的大小写策略，故保持现状未做归一化。
+- **SQLite 不强制字段长度**：应用层已按模型约束校验用户名 / 姓名 / 角色编码 / 角色名称不超过 50 字符，但数据库层面不会截断或拒绝更长的值。
+
 ## 运行测试
 
 ```bash
@@ -3959,7 +3964,7 @@ git status --porcelain
 
 ```bash
 git add README.md
-git commit -m "docs: add project readme with run instructions"
+git commit -m "docs: 补充项目说明与运行步骤"
 ```
 
 ---

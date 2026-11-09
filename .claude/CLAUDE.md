@@ -66,6 +66,7 @@ frontend/src/                  api / stores / router / layout / views
 - 测试项目额外允许：`Microsoft.AspNetCore.Mvc.Testing`、`Microsoft.NET.Test.Sdk`、`xunit`、`xunit.runner.visualstudio`。
 - **不引入 Swagger / OpenAPI**（`Swashbuckle`、`Microsoft.AspNetCore.OpenApi` 均不允许）。
 - 前端依赖固定为：Vue 3 + TypeScript + Vite + Element Plus + Vue Router 4 + Pinia + Axios。
+- 前端构建工具链（`typescript`、`vite`、`vue-tsc`、`@vitejs/plugin-vue`、`@vue/tsconfig`、`@types/node`）与 Element Plus 官方图标包 `@element-plus/icons-vue` 同样允许；除此之外**不得新增**前端依赖。
 
 ## 9. 前端 locale 与种子账号
 
