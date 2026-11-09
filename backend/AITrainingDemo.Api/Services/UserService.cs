@@ -107,12 +107,19 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         return await GetByIdAsync(user.Id);
     }
 
-    public async Task<UserDto> UpdateAsync(int id, UpdateUserRequest request)
+    public async Task<UserDto> UpdateAsync(int id, UpdateUserRequest request, int currentUserId)
     {
         var user = await db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
         if (user is null)
         {
             throw new BusinessException(404, "用户不存在");
+        }
+
+        // 与「不能删除当前登录用户」同理：停用自己会让账号既登不进来、已签发的 token 也立即失效，
+        // 而界面上误点一次就能触发，会造成只有自己能救的锁死
+        if (id == currentUserId && !request.Enabled)
+        {
+            throw new BusinessException(400, "不能停用当前登录用户");
         }
 
         await EnsureRoleExistsAsync(request.RoleId);

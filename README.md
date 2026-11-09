@@ -17,7 +17,7 @@
 |---|---|
 | 后端 | .NET 10 (`net10.0`)、EF Core 10、SQLite、JWT Bearer |
 | 前端 | Vue 3 + TypeScript + Vite + Element Plus + Vue Router + Pinia + Axios |
-| 测试 | xUnit + `WebApplicationFactory`（SQLite 内存库） |
+| 测试 | xUnit + `WebApplicationFactory`（SQLite 内存库；并发用例改用临时文件库） |
 
 ## 环境要求
 
@@ -38,7 +38,8 @@ dotnet run
 
 ### 生产部署注意
 
-- **必须用环境变量覆盖 `Jwt:SigningKey`**，例如 `Jwt__SigningKey`。仓库内的签名密钥只存在于 `appsettings.Development.json`（仅开发环境加载），生产环境若未提供该配置，后端会**拒绝启动**并给出明确报错。
+- **必须用环境变量提供 `Jwt:SigningKey`**，例如 `Jwt__SigningKey`。仓库内的签名密钥只存在于 `appsettings.Development.json`（仅开发环境加载，且**不会**随 `dotnet publish` 进入发布产物）。
+- 后端有三重启动保护：密钥缺失或短于 32 字节 → 拒绝启动；**非 Development 环境检测到仓库内的演示密钥 → 拒绝启动**；Development 环境使用演示密钥 → 启动日志显式告警（该密钥是公开的，token 可被伪造）。
 - **`EnsureCreated()` 不会演进既有表结构**。修改实体字段后需要删除 `App_Data/workbench.db` 重建数据库，种子数据会自动重新写入。
 
 ## 启动前端
@@ -65,6 +66,8 @@ npm run dev
 - **登录接口没有限流**：项目规范禁止引入 Redis / MQ / 外部服务，未做失败次数锁定，弱口令仍可被暴力尝试。生产部署应在网关层补充限流。
 - **角色编码创建后不可修改**：角色编码是唯一标识，编辑弹窗中该输入框为禁用态。
 - **所有登录用户权限相同**：角色字段（`admin` / `editor`）目前只用于展示与「角色被引用时禁止删除」的判定，**不参与接口鉴权**——设计文档 §1.2 明确把「RBAC 权限判定」列为本次范围外。因此任何一个登录成功的用户都能增删改全部用户与角色，不能当作权限边界使用。
+- **用户名也区分大小写**：与角色编码同理，SQLite 默认按二进制比较，`Admin` 与 `admin` 是两个不同的账号，登录与关键字搜索都区分大小写。
+- **更新用户是整量替换（PUT）语义**：请求体必须带全字段。漏传 `enabled` 会被当作 `false`（账号被停用），漏传 `roleId` 会清空该用户的角色（`roleId: null` 表示「不分配角色」，是有效取值）。前端始终带全字段，直接调用接口时需注意。
 
 ## 运行测试
 

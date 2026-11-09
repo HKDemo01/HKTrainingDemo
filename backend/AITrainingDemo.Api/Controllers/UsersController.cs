@@ -32,7 +32,8 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ApiResult<UserDto>>> Update(int id, UpdateUserRequest request)
     {
-        var result = await userService.UpdateAsync(id, request);
+        var currentUserId = User.GetUserId();
+        var result = await userService.UpdateAsync(id, request, currentUserId);
         return Ok(ApiResult<UserDto>.Ok(result));
     }
 

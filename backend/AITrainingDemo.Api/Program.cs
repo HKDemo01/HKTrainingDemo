@@ -11,6 +11,11 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+/// <summary>
+/// 仓库内的演示签名密钥，只允许在 Development 环境使用。
+/// </summary>
+const string DemoSigningKey = "dev-only-signing-key-change-me-in-production-0123456789";
+
 builder.Services.AddScoped<ApiExceptionFilter>();
 
 builder.Services.AddControllers(options => options.Filters.AddService<ApiExceptionFilter>())
@@ -37,6 +42,14 @@ var jwtSigningKey = builder.Configuration["Jwt:SigningKey"];
 if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
 {
     throw new InvalidOperationException("Jwt:SigningKey 缺失或长度不足 32 字节，拒绝启动。");
+}
+
+// 仓库内的演示密钥是公开的，任何拿到仓库的人都能用它自签 token。
+// 非开发环境一旦检测到它就直接拒绝启动，避免「误用 Development 配置上线」。
+if (string.Equals(jwtSigningKey, DemoSigningKey, StringComparison.Ordinal)
+    && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException("检测到仓库内的演示 JWT 签名密钥，非开发环境必须改用环境变量 Jwt__SigningKey 提供自有密钥，拒绝启动。");
 }
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -108,14 +121,16 @@ if (allowedOrigins.Length == 0)
     app.Logger.LogWarning("未配置 Cors:AllowedOrigins，所有跨域请求都会被拒绝，请检查该配置项。");
 }
 
-// CORS 必须先于认证/授权中间件，否则预检请求（OPTIONS 无 Authorization 头）会被拦成 401
-app.UseCors();
-app.UseAuthentication();
-app.UseAuthorization();
+if (string.Equals(jwtSigningKey, DemoSigningKey, StringComparison.Ordinal))
+{
+    app.Logger.LogWarning("当前使用的是仓库内的演示 JWT 签名密钥，任何拿到仓库的人都能自签 token，仅限本地开发使用。");
+}
 
 // 路由层 404 / 405 由框架直接短路，响应体是空的，与项目规范的统一响应形状不符，
 // 前端拦截器拿不到 message 只能显示兜底文案。这里补上 { code, message, data }；
 // 已经有响应体的请求（401、BusinessException 等）不受影响。
+// 必须排在认证/授权之前：授权中间件判定失败时会直接短路管线，
+// 排在它之后的中间件根本不会被执行，403 的响应体就还是空的。
 app.UseStatusCodePages(async context =>
 {
     var response = context.HttpContext.Response;
@@ -124,12 +139,18 @@ app.UseStatusCodePages(async context =>
     {
         StatusCodes.Status404NotFound => "接口不存在",
         StatusCodes.Status405MethodNotAllowed => "请求方法不被允许",
+        StatusCodes.Status403Forbidden => "没有访问权限",
         _ => "请求失败"
     };
 
     response.ContentType = "application/json";
     await response.WriteAsJsonAsync(ApiResult<object>.Fail(code, message));
 });
+
+// CORS 必须先于认证/授权中间件，否则预检请求（OPTIONS 无 Authorization 头）会被拦成 401
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

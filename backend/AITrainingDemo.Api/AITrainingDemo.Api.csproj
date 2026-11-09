@@ -12,4 +12,11 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 演示签名密钥不应随发布产物分发：部署时必须用环境变量 Jwt__SigningKey 提供自有密钥 -->
+    <Content Update="appsettings.Development.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

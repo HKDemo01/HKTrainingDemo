@@ -308,6 +308,33 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task UpdateUser_DisablingSelf_Returns400_AndKeepsSessionAlive()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var myId = await GetCurrentUserIdAsync(client);
+
+        // 停用自己会让账号既登不进来、已签发的 token 也立即失效，界面上误点一次就能锁死系统
+        var response = await client.PutAsJsonAsync($"/api/users/{myId}", new UpdateUserRequest(
+            null, "管理员", null, null, false));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(400, body.GetProperty("code").GetInt32());
+
+        // 拒绝之后原 token 仍然可用，说明账号没有被真的停用
+        var me = await client.GetAsync("/api/auth/me");
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+    }
+
+    private static async Task<int> GetCurrentUserIdAsync(HttpClient client)
+    {
+        var response = await client.GetAsync("/api/auth/me");
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("data").GetProperty("id").GetInt32();
+    }
+
     private static async Task<int> CreateUserAsync(HttpClient client, string username)
     {
         var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
