@@ -12,6 +12,13 @@ namespace AITrainingDemo.Api.Services;
 
 public class AuthService(AppDbContext db, IPasswordHasher hasher, IConfiguration configuration) : IAuthService
 {
+    /// <summary>
+    /// 等时化用的哑元哈希：固定的盐与哈希。用户不存在或已停用时也跑一次同参数的 PBKDF2，
+    /// 否则「用户不存在」比「口令错误」快一个数量级，可用响应时间枚举出有效用户名。
+    /// </summary>
+    private static readonly string DummyHash =
+        $"{Convert.ToBase64String(new byte[16])}.{Convert.ToBase64String(new byte[32])}";
+
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
         var user = await db.Users
@@ -19,7 +26,13 @@ public class AuthService(AppDbContext db, IPasswordHasher hasher, IConfiguration
             .FirstOrDefaultAsync(u => u.Username == request.Username);
 
         // 用户不存在、已停用、密码错误一律返回同一提示，避免用户名枚举
-        if (user is null || !user.Enabled || !hasher.Verify(request.Password, user.PasswordHash))
+        if (user is null || !user.Enabled)
+        {
+            hasher.Verify(request.Password, DummyHash);
+            throw new BusinessException(401, "用户名或密码错误");
+        }
+
+        if (!hasher.Verify(request.Password, user.PasswordHash))
         {
             throw new BusinessException(401, "用户名或密码错误");
         }

@@ -45,9 +45,15 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
     public async Task Login_NeverReturnsPasswordHash()
     {
         var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", "admin123"));
-        var content = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = body.GetProperty("data");
 
-        Assert.DoesNotContain("passwordHash", content, StringComparison.OrdinalIgnoreCase);
+        // 断言 data 的字段集合恰好是预期的那几个，避免「换个字段名就漏检」
+        var actualFields = data.EnumerateObject().Select(p => p.Name).OrderBy(n => n).ToArray();
+        Assert.Equal(new[] { "expiresAt", "token", "user" }, actualFields);
+
+        var userFields = data.GetProperty("user").EnumerateObject().Select(p => p.Name).OrderBy(n => n).ToArray();
+        Assert.Equal(new[] { "displayName", "id", "roleName", "username" }, userFields);
     }
 
     [Fact]
@@ -59,7 +65,7 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
     }
 
     [Fact]
-    public async Task Login_WithEmptyPassword_And_WithNullPassword_ReturnSame401()
+    public async Task Login_WithEmptyPassword_Returns401_And_WithNullPassword_Returns400()
     {
         var emptyPassword = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest("admin", ""));
         var nullPassword = await _client.PostAsJsonAsync("/api/auth/login", new { username = "admin", password = (string?)null });
@@ -170,7 +176,57 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
     [Fact]
     public async Task BusinessException_MapsToHttpStatusCodeAndApiResultBody()
     {
-        var username = "tmp-" + Guid.NewGuid().ToString("N");
+        var client = await CreateAuthenticatedClientAsync();
+
+        // 删除不存在的用户，Service 层抛出 BusinessException(404, "用户不存在")
+        var response = await client.DeleteAsync("/api/users/999999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(404, body.GetProperty("code").GetInt32());
+        Assert.Equal("用户不存在", body.GetProperty("message").GetString());
+        Assert.True(body.TryGetProperty("data", out _));
+    }
+
+    /// <summary>
+    /// 用户被停用后，停用之前签发的 token 应立即失效（否则「停用」开关形同虚设）。
+    /// </summary>
+    [Fact]
+    public async Task Token_IssuedBeforeUserDisabled_IsRejected()
+    {
+        var client = await CreateAuthenticatedClientAsync("editor", "editor123");
+
+        try
+        {
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var editor = await db.Users.FirstAsync(u => u.Username == "editor");
+                editor.Enabled = false;
+                await db.SaveChangesAsync();
+            }
+
+            var response = await client.GetAsync("/api/auth/me");
+
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+        finally
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var editor = await db.Users.FirstAsync(u => u.Username == "editor");
+            editor.Enabled = true;
+            await db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// 用户被删除后，已签发的 token 应立即失效。
+    /// </summary>
+    [Fact]
+    public async Task Token_IssuedBeforeUserDeleted_IsRejected()
+    {
+        var username = "tmp-del-" + Guid.NewGuid().ToString("N");
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -180,7 +236,7 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
             {
                 Username = username,
                 PasswordHash = hasher.Hash("tmp-pass"),
-                DisplayName = "临时用户",
+                DisplayName = "待删除用户",
                 Enabled = true,
                 CreatedAt = DateTime.UtcNow
             });
@@ -189,7 +245,6 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
 
         var token = await LoginAsync(username, "tmp-pass");
 
-        // 删除该用户，使 /api/auth/me 在 Service 层抛出 BusinessException(404)
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -201,13 +256,9 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await client.GetAsync("/api/auth/me");
+        var response = await client.GetAsync("/api/users");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(404, body.GetProperty("code").GetInt32());
-        Assert.Equal("用户不存在", body.GetProperty("message").GetString());
-        Assert.True(body.TryGetProperty("data", out _));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     private async Task<string> LoginAsync()
@@ -220,5 +271,13 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
         var response = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(username, password));
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         return body.GetProperty("data").GetProperty("token").GetString()!;
+    }
+
+    private async Task<HttpClient> CreateAuthenticatedClientAsync(string username = "admin", string password = "admin123")
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await LoginAsync(username, password));
+        return client;
     }
 }

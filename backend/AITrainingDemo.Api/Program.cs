@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Claims;
 using AITrainingDemo.Api.Common;
 using AITrainingDemo.Api.Data;
 using AITrainingDemo.Api.Services;
@@ -30,7 +31,13 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
-var jwtSigningKey = builder.Configuration["Jwt:SigningKey"]!;
+var jwtSigningKey = builder.Configuration["Jwt:SigningKey"];
+
+// HS256 的密钥强度直接决定 token 是否可被伪造，缺失或过短时拒绝启动
+if (string.IsNullOrWhiteSpace(jwtSigningKey) || Encoding.UTF8.GetByteCount(jwtSigningKey) < 32)
+{
+    throw new InvalidOperationException("Jwt:SigningKey 缺失或长度不足 32 字节，拒绝启动。");
+}
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -47,6 +54,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 context.Response.ContentType = "application/json";
                 context.Response.Headers.WWWAuthenticate = "Bearer";
                 await context.Response.WriteAsJsonAsync(ApiResult<object>.Fail(401, "未登录或登录状态已过期"));
+            },
+            // 每次请求校验一次账号状态：用户被停用或删除后，已签发的 token 应立即失效
+            OnTokenValidated = async context =>
+            {
+                var sub = context.Principal?.FindFirstValue("sub");
+                if (!int.TryParse(sub, out var userId))
+                {
+                    context.Fail("无效的身份声明");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var enabled = await db.Users.AsNoTracking().AnyAsync(u => u.Id == userId && u.Enabled);
+                if (!enabled)
+                {
+                    context.Fail("账号已停用或不存在");
+                }
             }
         };
         options.TokenValidationParameters = new TokenValidationParameters
@@ -58,7 +82,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
-            ClockSkew = TimeSpan.Zero
+            ClockSkew = TimeSpan.Zero,
+            // 签发时用的是短 claim 名 "role"，不显式指定的话默认按 ClaimTypes.Role 去找，导致按角色授权恒定 403
+            RoleClaimType = "role"
         };
     });
 
@@ -74,6 +100,13 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyMethod()));
 
 var app = builder.Build();
+
+// 允许来源为空时不会抛异常，但跨域请求会被静默拒绝且后端无任何日志，
+// 容易在部署到新环境时排查不到，因此在启动时显式告警
+if (allowedOrigins.Length == 0)
+{
+    app.Logger.LogWarning("未配置 Cors:AllowedOrigins，所有跨域请求都会被拒绝，请检查该配置项。");
+}
 
 // CORS 必须先于认证/授权中间件，否则预检请求（OPTIONS 无 Authorization 头）会被拦成 401
 app.UseCors();

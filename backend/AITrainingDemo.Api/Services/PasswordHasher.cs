@@ -49,7 +49,8 @@ public class PasswordHasher : IPasswordHasher
 
         // 存储哈希畸形（如 "salt." 第二段为空）时直接判定失败：
         // 期望哈希长度为 0 时 Pbkdf2 返回空数组，FixedTimeEquals(empty, empty) 恒为 true，会导致任意口令都能"验证通过"
-        if (salt.Length == 0 || expected.Length == 0)
+        // 同时要求盐与哈希长度与生成时一致，避免被截断/损坏的哈希混入比较
+        if (salt.Length != SaltSize || expected.Length != HashSize)
         {
             return false;
         }
