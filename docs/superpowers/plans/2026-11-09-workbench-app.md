@@ -1346,6 +1346,33 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetUsers_IncludesRolelessUser_WithNullRoleName()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        await CreateUserAsync(client, "norole01");
+
+        var response = await client.GetAsync("/api/users?keyword=norole01");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = body.GetProperty("data").GetProperty("items")[0];
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("roleId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, item.GetProperty("roleName").ValueKind);
+    }
+
+    [Fact]
+    public async Task GetUsers_ClampsPageSizeTo100()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/api/users?pageSize=500");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(100, body.GetProperty("data").GetProperty("pageSize").GetInt32());
+    }
+
     private static async Task<int> CreateUserAsync(HttpClient client, string username)
     {
         var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
@@ -1615,7 +1642,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "FullyQualifiedName~UserApiTests"
 ```
 
-Expected: 9 个用例全部 PASS。
+Expected: 11 个用例全部 PASS。
 
 - [ ] **Step 8: 提交**
 
@@ -2050,6 +2077,8 @@ git commit -m "feat: add role crud api with reference protection"
 
 **Files:**
 - Create: `backend/AITrainingDemo.Api/Dtos/DashboardDtos.cs`
+- Create: `backend/AITrainingDemo.Api/Services/IDashboardService.cs`
+- Create: `backend/AITrainingDemo.Api/Services/DashboardService.cs`
 - Create: `backend/AITrainingDemo.Api/Controllers/DashboardController.cs`
 - Create: `backend/AITrainingDemo.Tests/DashboardApiTests.cs`
 - Modify: `backend/AITrainingDemo.Api/Program.cs`
@@ -2059,8 +2088,11 @@ git commit -m "feat: add role crud api with reference protection"
 - Consumes: Task 2/3 产出。
 - Produces:
   - `AITrainingDemo.Api.Dtos.DashboardStatsDto(int UserCount, int RoleCount)`。
+  - `AITrainingDemo.Api.Services.IDashboardService` — `Task<DashboardStatsDto> GetStatsAsync()`。
   - `GET /api/dashboard/stats`（需 Bearer）。
   - 后端监听 `http://localhost:5080`；CORS 允许 `http://localhost:5173`。
+
+> ⚠️ **分层约束（项目规范 §3）**：Controller 里**禁止**直接注入 `AppDbContext` 写 LINQ 查询。统计逻辑必须放在 `DashboardService` 里，Controller 只负责「调用 Service → 返回 `ApiResult<T>`」。
 
 - [ ] **Step 1: 写 DTO 与失败测试**
 
@@ -2130,33 +2162,70 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: FAIL —— 404。
 
-- [ ] **Step 3: 实现 `DashboardController`**
+- [ ] **Step 3: 实现 `DashboardService` 与 `DashboardController`**
+
+`backend/AITrainingDemo.Api/Services/IDashboardService.cs`：
+
+```csharp
+using AITrainingDemo.Api.Dtos;
+
+namespace AITrainingDemo.Api.Services;
+
+public interface IDashboardService
+{
+    Task<DashboardStatsDto> GetStatsAsync();
+}
+```
+
+`backend/AITrainingDemo.Api/Services/DashboardService.cs`：
+
+```csharp
+using AITrainingDemo.Api.Data;
+using AITrainingDemo.Api.Dtos;
+using Microsoft.EntityFrameworkCore;
+
+namespace AITrainingDemo.Api.Services;
+
+public class DashboardService(AppDbContext db) : IDashboardService
+{
+    public async Task<DashboardStatsDto> GetStatsAsync()
+    {
+        var userCount = await db.Users.CountAsync();
+        var roleCount = await db.Roles.CountAsync();
+        return new DashboardStatsDto(userCount, roleCount);
+    }
+}
+```
 
 `backend/AITrainingDemo.Api/Controllers/DashboardController.cs`：
 
 ```csharp
 using AITrainingDemo.Api.Common;
-using AITrainingDemo.Api.Data;
 using AITrainingDemo.Api.Dtos;
+using AITrainingDemo.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace AITrainingDemo.Api.Controllers;
 
 [ApiController]
 [Route("api/dashboard")]
 [Authorize]
-public class DashboardController(AppDbContext db) : ControllerBase
+public class DashboardController(IDashboardService dashboardService) : ControllerBase
 {
     [HttpGet("stats")]
     public async Task<ActionResult<ApiResult<DashboardStatsDto>>> GetStats()
     {
-        var userCount = await db.Users.CountAsync();
-        var roleCount = await db.Roles.CountAsync();
-        return Ok(ApiResult<DashboardStatsDto>.Ok(new DashboardStatsDto(userCount, roleCount)));
+        var result = await dashboardService.GetStatsAsync();
+        return Ok(ApiResult<DashboardStatsDto>.Ok(result));
     }
 }
+```
+
+在 `Program.cs` 的 `builder.Services.AddScoped<IRoleService, RoleService>();` 下一行加入：
+
+```csharp
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 ```
 
 - [ ] **Step 4: 在 `Program.cs` 开启 CORS**
@@ -2221,7 +2290,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 ```
 
-Expected: 全部 PASS（4 + 6 + 9 + 8 + 2 = 29 个用例）。
+Expected: 全部 PASS（Task 2 的 6 + Task 3 的 8 + Task 4 的 11 + Task 5 的 8 + Task 6 的 2 = 35 个用例）。
 
 - [ ] **Step 7: 提交**
 
@@ -2906,6 +2975,7 @@ export const dashboardApi = {
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { onMounted } from 'vue'
 import { ArrowDown, Avatar, HomeFilled, User } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -2920,6 +2990,12 @@ function handleCommand(command: string) {
     router.push('/login')
   }
 }
+
+// 刷新页面后用持久化的 token 校验一次会话有效性；
+// token 失效时 axios 拦截器会清空登录态并跳回 /login
+onMounted(async () => {
+  await auth.fetchMe()
+})
 </script>
 
 <style scoped>
@@ -3021,9 +3097,13 @@ const auth = useAuthStore()
 const stats = reactive({ userCount: 0, roleCount: 0 })
 
 onMounted(async () => {
-  const result = await dashboardApi.getStats()
-  stats.userCount = result.userCount
-  stats.roleCount = result.roleCount
+  try {
+    const result = await dashboardApi.getStats()
+    stats.userCount = result.userCount
+    stats.roleCount = result.roleCount
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+  }
 })
 </script>
 
@@ -3245,6 +3325,8 @@ async function load() {
     })
     rows.value = result.items
     total.value = result.total
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
   } finally {
     loading.value = false
   }
@@ -3339,13 +3421,22 @@ async function remove(row: UserDto) {
   } catch {
     return
   }
-  await usersApi.remove(row.id)
+  try {
+    await usersApi.remove(row.id)
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+    return
+  }
   ElMessage.success('删除成功')
   load()
 }
 
 onMounted(async () => {
-  roleOptions.value = await rolesApi.getAll()
+  try {
+    roleOptions.value = await rolesApi.getAll()
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+  }
   await load()
 })
 </script>
@@ -3509,6 +3600,8 @@ async function load() {
     })
     rows.value = result.items
     total.value = result.total
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
   } finally {
     loading.value = false
   }
@@ -3582,7 +3675,12 @@ async function remove(row: RoleDto) {
   } catch {
     return
   }
-  await rolesApi.remove(row.id)
+  try {
+    await rolesApi.remove(row.id)
+  } catch {
+    // 错误提示已由 axios 拦截器统一处理
+    return
+  }
   ElMessage.success('删除成功')
   load()
 }
@@ -3692,7 +3790,7 @@ npm run dev
 | 8 | 在角色管理页新增角色 `auditor` | 表格出现，关联用户数为 0，删除按钮可用 |
 | 9 | 删除 `auditor` | 删除成功 |
 | 10 | 删除 `admin` 角色 | 提示「该角色已被 1 个用户引用，无法删除」，按钮为禁用态 |
-| 11 | 刷新浏览器 | 仍处于登录态（token 已持久化），且不再重复调用 `/api/auth/me` 报错 |
+| 11 | 刷新浏览器 | 仍处于登录态（token 已持久化），并自动调用一次 `/api/auth/me` 校验会话 |
 | 12 | 顶栏用户下拉 → 退出登录 | 回到 `/login`，再访问 `/users` 跳回 `/login` |
 | 13 | 停止后端再启动 | 数据仍在（SQLite 文件持久化） |
 
