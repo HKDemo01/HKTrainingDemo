@@ -2960,13 +2960,15 @@ git commit -m "feat: 搭建前端脚手架与登录页"
 **Files:**
 - Create: `frontend/src/api/dashboard.ts`
 - Create（覆盖 Task 7 的占位组件）: `frontend/src/layout/AppLayout.vue`
+- Create: `frontend/src/layout/AppMenu.vue`
 - Create（覆盖 Task 7 的占位组件）: `frontend/src/views/DashboardView.vue`
 
 **Interfaces:**
 - Consumes: `useAuthStore()`、Task 6 的 `GET /api/dashboard/stats`。
 - Produces:
   - `src/api/dashboard.ts` 导出 `dashboardApi.getStats()`。
-  - `src/layout/AppLayout.vue` —— 侧边栏菜单（工作台 / 用户管理 / 角色管理）+ 顶栏（标题 + 用户下拉退出）。
+  - `src/layout/AppMenu.vue` —— 侧边栏与移动端抽屉共用的菜单（工作台 / 用户管理 / 角色管理）。
+  - `src/layout/AppLayout.vue` —— 侧边栏（或 ≤768px 的抽屉菜单）+ 顶栏（标题 + 用户下拉退出）。
   - `src/views/DashboardView.vue` —— 欢迎语 + 用户/角色统计卡 + 快捷入口。
 
 - [ ] **Step 1: 写 `src/api/dashboard.ts`**
@@ -2982,38 +2984,86 @@ export const dashboardApi = {
 }
 ```
 
-- [ ] **Step 2: 写布局 `src/layout/AppLayout.vue`**
+- [ ] **Step 2: 写菜单组件 `src/layout/AppMenu.vue`**
+
+桌面端侧边栏与移动端抽屉共用同一份菜单，单独抽成组件避免重复。
+
+```vue
+<template>
+  <el-menu
+    class="app-menu"
+    :default-active="route.path"
+    router
+    background-color="#1f2d3d"
+    text-color="#c0c4cc"
+    active-text-color="#409eff"
+    @select="emit('select')"
+  >
+    <el-menu-item index="/dashboard">
+      <el-icon><HomeFilled /></el-icon>
+      <span>工作台</span>
+    </el-menu-item>
+    <el-menu-item index="/users">
+      <el-icon><User /></el-icon>
+      <span>用户管理</span>
+    </el-menu-item>
+    <el-menu-item index="/roles">
+      <el-icon><Avatar /></el-icon>
+      <span>角色管理</span>
+    </el-menu-item>
+  </el-menu>
+</template>
+
+<script setup lang="ts">
+import { useRoute } from 'vue-router'
+import { Avatar, HomeFilled, User } from '@element-plus/icons-vue'
+
+const emit = defineEmits<{ (e: 'select'): void }>()
+
+const route = useRoute()
+</script>
+
+<style scoped>
+.app-menu {
+  border-right: none;
+}
+</style>
+```
+
+- [ ] **Step 3: 写布局 `src/layout/AppLayout.vue`**
+
+设计文档 §4.4 要求「菜单在 ≤768px 折叠为抽屉」，因此用 `matchMedia` 判断窄屏：窄屏时隐藏侧边栏，顶栏左侧出现菜单按钮，点开 `el-drawer` 承载同一份 `AppMenu`。
 
 ```vue
 <template>
   <el-container class="app-layout">
-    <el-aside width="210px" class="app-aside">
+    <el-aside v-if="!isMobile" width="210px" class="app-aside">
       <div class="app-logo">工作台</div>
-      <el-menu
-        :default-active="route.path"
-        router
-        background-color="#1f2d3d"
-        text-color="#c0c4cc"
-        active-text-color="#409eff"
-      >
-        <el-menu-item index="/dashboard">
-          <el-icon><HomeFilled /></el-icon>
-          <span>工作台</span>
-        </el-menu-item>
-        <el-menu-item index="/users">
-          <el-icon><User /></el-icon>
-          <span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="/roles">
-          <el-icon><Avatar /></el-icon>
-          <span>角色管理</span>
-        </el-menu-item>
-      </el-menu>
+      <AppMenu />
     </el-aside>
+
+    <el-drawer
+      v-else
+      v-model="drawerVisible"
+      class="app-drawer"
+      body-class="app-drawer-body"
+      direction="ltr"
+      size="210px"
+      :with-header="false"
+    >
+      <div class="app-logo">工作台</div>
+      <AppMenu @select="drawerVisible = false" />
+    </el-drawer>
 
     <el-container>
       <el-header class="app-header">
-        <span class="app-header-title">{{ route.meta.title }}</span>
+        <div class="app-header-left">
+          <el-button v-if="isMobile" class="app-menu-toggle" link @click="drawerVisible = true">
+            <el-icon><Menu /></el-icon>
+          </el-button>
+          <span class="app-header-title">{{ route.meta.title }}</span>
+        </div>
+
         <el-dropdown @command="handleCommand">
           <span class="app-user">
             {{ auth.user?.displayName ?? '未登录' }}
@@ -3035,15 +3085,40 @@ export const dashboardApi = {
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { onMounted } from 'vue'
-import { ArrowDown, Avatar, HomeFilled, User } from '@element-plus/icons-vue'
+import { ArrowDown, Menu } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import AppMenu from './AppMenu.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+const drawerVisible = ref(false)
+
+// 窄屏（≤768px）时把左侧菜单收进抽屉
+const mobileQuery = window.matchMedia('(max-width: 768px)')
+const isMobile = ref(mobileQuery.matches)
+
+function onMediaChange(event: MediaQueryListEvent) {
+  isMobile.value = event.matches
+  if (!event.matches) {
+    drawerVisible.value = false
+  }
+}
+
+onMounted(async () => {
+  mobileQuery.addEventListener('change', onMediaChange)
+  // 刷新页面后用持久化的 token 校验一次会话有效性；
+  // token 失效时 axios 拦截器会清空登录态并跳回 /login
+  await auth.fetchMe()
+})
+
+onBeforeUnmount(() => {
+  mobileQuery.removeEventListener('change', onMediaChange)
+})
 
 function handleCommand(command: string) {
   if (command === 'logout') {
@@ -3052,12 +3127,6 @@ function handleCommand(command: string) {
     router.push('/login')
   }
 }
-
-// 刷新页面后用持久化的 token 校验一次会话有效性；
-// token 失效时 axios 拦截器会清空登录态并跳回 /login
-onMounted(async () => {
-  await auth.fetchMe()
-})
 </script>
 
 <style scoped>
@@ -3079,16 +3148,18 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.app-aside :deep(.el-menu) {
-  border-right: none;
-}
-
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #fff;
   border-bottom: 1px solid #e6e6e6;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-header-title {
@@ -3107,10 +3178,15 @@ onMounted(async () => {
 .app-main {
   background: #f0f2f5;
 }
+
+/* 抽屉内的菜单需要铺满，去掉默认内边距 */
+.app-drawer :deep(.app-drawer-body) {
+  padding: 0;
+}
 </style>
 ```
 
-- [ ] **Step 3: 写工作台首页 `src/views/DashboardView.vue`**
+- [ ] **Step 4: 写工作台首页 `src/views/DashboardView.vue`**
 
 ```vue
 <template>
@@ -3201,7 +3277,7 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 4: 构建验证**
+- [ ] **Step 5: 构建验证**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -3210,7 +3286,7 @@ npm run build
 
 Expected: 构建成功。
 
-- [ ] **Step 5: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
 git add frontend/
@@ -3855,6 +3931,7 @@ npm run dev
 | 11 | 刷新浏览器 | 仍处于登录态（token 已持久化），并自动调用一次 `/api/auth/me` 校验会话 |
 | 12 | 顶栏用户下拉 → 退出登录 | 回到 `/login`，再访问 `/users` 跳回 `/login` |
 | 13 | 停止后端再启动 | 数据仍在（SQLite 文件持久化） |
+| 14 | 把浏览器窗口宽度缩到 ≤768px | 左侧菜单收起，顶栏出现菜单按钮，点开是抽屉菜单 |
 
 > 第 13 条验证时注意 `backend/AITrainingDemo.Api/App_Data/workbench.db` 已生成且未被 git 跟踪。
 
