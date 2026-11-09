@@ -113,6 +113,24 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// 路由层 404 / 405 由框架直接短路，响应体是空的，与项目规范的统一响应形状不符，
+// 前端拦截器拿不到 message 只能显示兜底文案。这里补上 { code, message, data }；
+// 已经有响应体的请求（401、BusinessException 等）不受影响。
+app.UseStatusCodePages(async context =>
+{
+    var response = context.HttpContext.Response;
+    var code = response.StatusCode;
+    var message = code switch
+    {
+        StatusCodes.Status404NotFound => "接口不存在",
+        StatusCodes.Status405MethodNotAllowed => "请求方法不被允许",
+        _ => "请求失败"
+    };
+
+    response.ContentType = "application/json";
+    await response.WriteAsJsonAsync(ApiResult<object>.Fail(code, message));
+});
+
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
