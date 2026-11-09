@@ -815,9 +815,10 @@ git commit -m "feat: scaffold backend project with entity, dbcontext and seed da
 
 > **结转项（来自 Task 2 审查的裁决，必须遵守）**
 >
-> 1. **NuGet 版本**：新增 `Microsoft.AspNetCore.Authentication.JwtBearer` 时**必须选用无漏洞的 10.0.x 版本**（与 EF Core 已升级到的 `10.0.14` 保持一致的补丁线）。**不要**盲目使用本计划示例的 `10.0.0` —— Task 2 已确认 `10.0.0` 会带入高危传递依赖。装完包后运行 `dotnet list package --vulnerable --include-transitive` 自检，无告警才算通过。
+> 1. **NuGet 版本**：`Microsoft.AspNetCore.Authentication.JwtBearer` **已在 Task 2 中装好并升到 `10.0.14`**（与 EF Core 对齐、`--vulnerable` 无告警），本任务**不需要也不允许**再动包版本或新增任何包。本计划正文里 `dotnet add package ... --version 10.0.0` 那一步**已过时，跳过**。想自检就跑一次 `dotnet list package --vulnerable --include-transitive`。
 > 2. **异常过滤器注册路径唯一**：`Program.cs` 中 `ApiExceptionFilter` 的注册**只保留一条路径**（`builder.Services.AddScoped<ApiExceptionFilter>();` + `options.Filters.AddService<ApiExceptionFilter>();`）。**不得**再出现 `options.Filters.Add<ApiExceptionFilter>()`，否则异常会被处理两次。
 > 3. **补一条异常映射测试**：新增自动化测试，断言 Service 抛出的 `BusinessException(code, message)` 经 `ApiExceptionFilter` 后，HTTP 状态码 == `code`，且响应体是 `ApiResult` 形状（`code`/`message`/`data` 三字段，`code` 等于业务码、`message` 一致）。
+> 4. **`Jwt:SigningKey` 的来源**：配置键名是 `Jwt:SigningKey`（`appsettings.json` 已有），测试环境由 `AppFactory` 用 `builder.UseSetting("Jwt:SigningKey", ...)` 注入，两边键名必须一致。
 
 **Files:**
 - Create: `backend/AITrainingDemo.Api/Dtos/AuthDtos.cs`
