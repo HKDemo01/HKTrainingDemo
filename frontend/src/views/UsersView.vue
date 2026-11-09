@@ -85,7 +85,8 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="enabled">
-          <el-switch v-model="form.enabled" active-text="启用" inactive-text="停用" />
+          <el-switch v-model="form.enabled" active-text="启用" inactive-text="停用" :disabled="isEditingSelf" />
+          <span v-if="isEditingSelf" class="hint">不能停用当前登录用户</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -97,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { rolesApi } from '@/api/roles'
@@ -127,6 +128,9 @@ const form = reactive({
   roleId: null as number | null,
   enabled: true,
 })
+
+// 编辑自己时禁用状态开关：停用当前登录用户会被后端拒绝（会造成账号锁死）
+const isEditingSelf = computed(() => form.id !== 0 && form.id === auth.user?.id)
 
 const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -282,5 +286,11 @@ onMounted(async () => {
 .pagination {
   margin-top: 16px;
   justify-content: flex-end;
+}
+
+.hint {
+  margin-left: 10px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 </style>
