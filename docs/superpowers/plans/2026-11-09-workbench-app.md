@@ -1642,7 +1642,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "FullyQualifiedName~UserApiTests"
 ```
 
-Expected: 11 个用例全部 PASS。
+Expected: 12 个用例全部 PASS。
 
 - [ ] **Step 8: 提交**
 
@@ -2290,7 +2290,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 ```
 
-Expected: 全部 PASS（Task 2 的 6 + Task 3 的 8 + Task 4 的 11 + Task 5 的 8 + Task 6 的 2 = 35 个用例）。
+Expected: 全部 PASS（Task 2 的 6 + Task 3 的 10 + Task 4 的 12 + Task 5 的 8 + Task 6 的 2 = 38 个用例）。
 
 - [ ] **Step 7: 提交**
 
