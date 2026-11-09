@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using AITrainingDemo.Api.Common;
 using AITrainingDemo.Api.Dtos;
 using AITrainingDemo.Api.Services;
@@ -23,7 +22,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<ApiResult<LoginUserInfo>>> Me()
     {
-        var userId = int.Parse(User.FindFirstValue("sub")!);
+        var userId = User.GetUserId();
         var result = await authService.GetCurrentUserAsync(userId);
         return Ok(ApiResult<LoginUserInfo>.Ok(result));
     }

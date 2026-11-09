@@ -162,6 +162,31 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
     }
 
     [Fact]
+    public async Task GetUsers_HugePage_ReturnsEmptyItems()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/api/users?page=2147483647&pageSize=100");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(0, body.GetProperty("data").GetProperty("items").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task GetUsers_CreatedAt_IsMarkedAsUtc()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/api/users");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = body.GetProperty("data").GetProperty("items")[0];
+        Assert.EndsWith("Z", item.GetProperty("createdAt").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CreateUser_WithBlankUsername_Returns400()
     {
         var client = await CreateAuthenticatedClientAsync();
@@ -191,6 +216,40 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
 
         var response = await client.PutAsJsonAsync($"/api/users/{created}", new UpdateUserRequest(
             null, "   ", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateUser_WithTooLongUsername_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            new string('a', 51), "Test@123456", "超长用户名", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateUser_WithTooLongDisplayName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "toolongname01", "Test@123456", new string('名', 51), null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUser_WithTooLongDisplayName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var created = await CreateUserAsync(client, "longupdate01");
+
+        var response = await client.PutAsJsonAsync($"/api/users/{created}", new UpdateUserRequest(
+            null, new string('名', 51), null, null, true));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

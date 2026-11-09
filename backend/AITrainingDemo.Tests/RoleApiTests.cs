@@ -112,6 +112,56 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
     }
 
     [Fact]
+    public async Task GetRoles_WithoutToken_Returns401()
+    {
+        var response = await _client.GetAsync("/api/roles");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetRoles_ReturnsActualUserCount()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var roleId = await CreateRoleAsync(client, "counted01");
+
+        await CreateUserAsync(client, "counted_user01", roleId);
+        await CreateUserAsync(client, "counted_user02", roleId);
+
+        var response = await client.GetAsync("/api/roles?keyword=counted01");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = body.GetProperty("data").GetProperty("items")[0];
+        Assert.Equal(2, item.GetProperty("userCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetRoles_HugePage_ReturnsEmptyItems()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/api/roles?page=2147483647&pageSize=100");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(0, body.GetProperty("data").GetProperty("items").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task GetRoles_CreatedAt_IsMarkedAsUtc()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/api/roles");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var item = body.GetProperty("data").GetProperty("items")[0];
+        Assert.EndsWith("Z", item.GetProperty("createdAt").GetString()!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CreateRole_WithBlankCode_Returns400()
     {
         var client = await CreateAuthenticatedClientAsync();
@@ -131,6 +181,49 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
             new CreateRoleRequest("blankname01", "   ", null));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateRole_WithTooLongCode_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest(new string('a', 51), "超长编码角色", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateRole_WithTooLongName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("toolongname01", new string('名', 51), null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateRole_WithTooLongName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var created = await CreateRoleAsync(client, "longrole01");
+
+        var response = await client.PutAsJsonAsync($"/api/roles/{created}",
+            new UpdateRoleRequest(new string('名', 51), null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private static async Task<int> CreateUserAsync(HttpClient client, string username, int roleId)
+    {
+        var response = await client.PostAsJsonAsync("/api/users",
+            new CreateUserRequest(username, "Test@123456", "临时用户", null, roleId, true));
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("data").GetProperty("id").GetInt32();
     }
 
     private static async Task<int> CreateRoleAsync(HttpClient client, string code)

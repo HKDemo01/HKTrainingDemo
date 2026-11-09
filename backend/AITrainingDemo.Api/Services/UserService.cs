@@ -10,6 +10,9 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 {
     private const int MaxPageSize = 100;
 
+    /// <summary>与 AppDbContext 中 Username / DisplayName 的 HasMaxLength(50) 保持一致。</summary>
+    private const int MaxNameLength = 50;
+
     public async Task<PagedResult<UserDto>> GetPagedAsync(UserQuery query)
     {
         var page = query.Page < 1 ? 1 : query.Page;
@@ -32,12 +35,20 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 
         var total = await q.CountAsync();
 
-        var items = await q
-            .OrderBy(u => u.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(u => new UserDto(u.Id, u.Username, u.DisplayName, u.Email, u.RoleId, u.Role!.Name, u.Enabled, u.CreatedAt))
-            .ToListAsync();
+        // 偏移量用 long 计算：(page - 1) * pageSize 若是 int 运算，极大 page 会溢出成负数，
+        // SQLite 会把负 OFFSET 当 0，导致请求第 N 页却返回第一页数据
+        var offset = (long)(page - 1) * pageSize;
+        var items = offset >= total
+            ? new List<UserDto>()
+            : await q
+                .OrderBy(u => u.Id)
+                .Skip((int)offset)
+                .Take(pageSize)
+                .Select(u => new UserDto(u.Id, u.Username, u.DisplayName, u.Email, u.RoleId, u.Role!.Name, u.Enabled, u.CreatedAt))
+                .ToListAsync();
+
+        // SQLite 读回的 DateTime 是 Unspecified，统一标成 UTC，避免与创建/更新响应（带 Z）口径不一致
+        items = items.Select(u => u with { CreatedAt = DateTime.SpecifyKind(u.CreatedAt, DateTimeKind.Utc) }).ToList();
 
         return new PagedResult<UserDto>(items, total, page, pageSize);
     }
@@ -61,6 +72,16 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 
         var username = request.Username.Trim();
 
+        if (username.Length > MaxNameLength)
+        {
+            throw new BusinessException(400, $"用户名长度不能超过 {MaxNameLength} 个字符");
+        }
+
+        if (request.DisplayName.Trim().Length > MaxNameLength)
+        {
+            throw new BusinessException(400, $"姓名长度不能超过 {MaxNameLength} 个字符");
+        }
+
         if (await db.Users.AnyAsync(u => u.Username == username))
         {
             throw new BusinessException(409, "用户名已存在");
@@ -80,7 +101,7 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         };
 
         db.Users.Add(user);
-        await db.SaveChangesAsync();
+        await SaveChangesAsync("用户名已存在");
 
         return await GetByIdAsync(user.Id);
     }
@@ -100,6 +121,11 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
             throw new BusinessException(400, "姓名不能为空");
         }
 
+        if (request.DisplayName.Trim().Length > MaxNameLength)
+        {
+            throw new BusinessException(400, $"姓名长度不能超过 {MaxNameLength} 个字符");
+        }
+
         user.DisplayName = request.DisplayName.Trim();
         user.Email = request.Email;
         user.RoleId = request.RoleId;
@@ -110,7 +136,7 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
             user.PasswordHash = hasher.Hash(request.Password);
         }
 
-        await db.SaveChangesAsync();
+        await SaveChangesAsync("用户名已存在");
 
         return await GetByIdAsync(user.Id);
     }
@@ -130,6 +156,21 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 
         db.Users.Remove(user);
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 保存变更；并发写入撞上唯一索引时转成 409，避免把数据库异常冒成 500。
+    /// </summary>
+    private async Task SaveChangesAsync(string duplicateMessage)
+    {
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            throw new BusinessException(409, duplicateMessage);
+        }
     }
 
     private async Task EnsureRoleExistsAsync(int? roleId)

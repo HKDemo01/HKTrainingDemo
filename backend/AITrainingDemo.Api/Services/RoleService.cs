@@ -10,6 +10,9 @@ public class RoleService(AppDbContext db) : IRoleService
 {
     private const int MaxPageSize = 100;
 
+    /// <summary>与 AppDbContext 中 Code / Name 的 HasMaxLength(50) 保持一致。</summary>
+    private const int MaxNameLength = 50;
+
     public async Task<PagedResult<RoleDto>> GetPagedAsync(RoleQuery query)
     {
         var page = query.Page < 1 ? 1 : query.Page;
@@ -25,18 +28,26 @@ public class RoleService(AppDbContext db) : IRoleService
 
         var total = await q.CountAsync();
 
-        var items = await q
-            .OrderBy(r => r.Id)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(r => new RoleDto(
-                r.Id,
-                r.Code,
-                r.Name,
-                r.Description,
-                r.Users.Count,
-                r.CreatedAt))
-            .ToListAsync();
+        // 偏移量用 long 计算：(page - 1) * pageSize 若是 int 运算，极大 page 会溢出成负数，
+        // SQLite 会把负 OFFSET 当 0，导致请求第 N 页却返回第一页数据
+        var offset = (long)(page - 1) * pageSize;
+        var items = offset >= total
+            ? new List<RoleDto>()
+            : await q
+                .OrderBy(r => r.Id)
+                .Skip((int)offset)
+                .Take(pageSize)
+                .Select(r => new RoleDto(
+                    r.Id,
+                    r.Code,
+                    r.Name,
+                    r.Description,
+                    r.Users.Count,
+                    r.CreatedAt))
+                .ToListAsync();
+
+        // SQLite 读回的 DateTime 是 Unspecified，统一标成 UTC，避免与创建/更新响应（带 Z）口径不一致
+        items = items.Select(r => r with { CreatedAt = DateTime.SpecifyKind(r.CreatedAt, DateTimeKind.Utc) }).ToList();
 
         return new PagedResult<RoleDto>(items, total, page, pageSize);
     }
@@ -64,6 +75,16 @@ public class RoleService(AppDbContext db) : IRoleService
 
         var code = request.Code.Trim();
 
+        if (code.Length > MaxNameLength)
+        {
+            throw new BusinessException(400, $"角色编码长度不能超过 {MaxNameLength} 个字符");
+        }
+
+        if (request.Name.Trim().Length > MaxNameLength)
+        {
+            throw new BusinessException(400, $"角色名称长度不能超过 {MaxNameLength} 个字符");
+        }
+
         if (await db.Roles.AnyAsync(r => r.Code == code))
         {
             throw new BusinessException(409, "角色编码已存在");
@@ -78,7 +99,7 @@ public class RoleService(AppDbContext db) : IRoleService
         };
 
         db.Roles.Add(role);
-        await db.SaveChangesAsync();
+        await SaveChangesAsync("角色编码已存在");
 
         return new RoleDto(role.Id, role.Code, role.Name, role.Description, 0, role.CreatedAt);
     }
@@ -96,10 +117,15 @@ public class RoleService(AppDbContext db) : IRoleService
             throw new BusinessException(400, "角色名称不能为空");
         }
 
+        if (request.Name.Trim().Length > MaxNameLength)
+        {
+            throw new BusinessException(400, $"角色名称长度不能超过 {MaxNameLength} 个字符");
+        }
+
         role.Name = request.Name.Trim();
         role.Description = request.Description;
 
-        await db.SaveChangesAsync();
+        await SaveChangesAsync("角色编码已存在");
 
         return new RoleDto(role.Id, role.Code, role.Name, role.Description, role.Users.Count, role.CreatedAt);
     }
@@ -120,5 +146,20 @@ public class RoleService(AppDbContext db) : IRoleService
 
         db.Roles.Remove(role);
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// 保存变更；并发写入撞上唯一索引时转成 409，避免把数据库异常冒成 500。
+    /// </summary>
+    private async Task SaveChangesAsync(string duplicateMessage)
+    {
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            throw new BusinessException(409, duplicateMessage);
+        }
     }
 }

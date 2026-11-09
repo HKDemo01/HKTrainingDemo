@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using AITrainingDemo.Api.Common;
 using AITrainingDemo.Api.Dtos;
 using AITrainingDemo.Api.Services;
@@ -40,7 +39,7 @@ public class UsersController(IUserService userService) : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResult<object>>> Delete(int id)
     {
-        var currentUserId = int.Parse(User.FindFirstValue("sub")!);
+        var currentUserId = User.GetUserId();
         await userService.DeleteAsync(id, currentUserId);
         return Ok(ApiResult<object>.Ok(new { }));
     }
