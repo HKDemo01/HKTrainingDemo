@@ -2959,6 +2959,7 @@ git commit -m "feat: 搭建前端脚手架与登录页"
 
 **Files:**
 - Create: `frontend/src/api/dashboard.ts`
+- Modify: `frontend/src/main.ts`
 - Create（覆盖 Task 7 的占位组件）: `frontend/src/layout/AppLayout.vue`
 - Create: `frontend/src/layout/AppMenu.vue`
 - Create（覆盖 Task 7 的占位组件）: `frontend/src/views/DashboardView.vue`
@@ -3277,7 +3278,30 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 5: 构建验证**
+- [ ] **Step 5: 去掉 `src/main.ts` 的图标全局注册**
+
+`main.ts` 里遍历 `ElementPlusIconsVue` 把 300 多个图标全部注册成全局组件，但各处用到的图标都已按需 `import`。全局注册只增加产物体积，没有实际作用，删掉即可：
+
+```ts
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import 'element-plus/dist/index.css'
+
+import App from './App.vue'
+import router from './router'
+
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+app.use(ElementPlus, { locale: zhCn })
+
+app.mount('#app')
+```
+
+- [ ] **Step 6: 构建验证**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -3286,7 +3310,7 @@ npm run build
 
 Expected: 构建成功。
 
-- [ ] **Step 6: 提交**
+- [ ] **Step 7: 提交**
 
 ```bash
 git add frontend/
