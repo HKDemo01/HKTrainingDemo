@@ -643,7 +643,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers(options => options.Filters.Add<ApiExceptionFilter>())
+// 异常过滤器只保留这一条注册路径（AddScoped + AddService），
+// 不得再出现 options.Filters.Add<ApiExceptionFilter>()，否则异常会被处理两次
+builder.Services.AddScoped<ApiExceptionFilter>();
+
+builder.Services.AddControllers(options => options.Filters.AddService<ApiExceptionFilter>())
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = _ =>
@@ -1147,6 +1151,8 @@ git commit -m "feat: add jwt authentication and auth api"
 
 ---
 
+> **补充（Task 2 复审后追加）**：Task 2 复审指出「`ApiExceptionFilter` 只保留一条注册路径」这一约束**没有持久化测试护栏** —— 若后续有人再加回 `options.Filters.Add<ApiExceptionFilter>()`，现有用例无一失败。已在 `backend/AITrainingDemo.Tests/ExceptionFilterTests.cs` 补 `ApiExceptionFilter_IsRegistered_ExactlyOnce`：从 `IOptions<MvcOptions>.Value.Filters` 里数出指向 `ApiExceptionFilter` 的 `TypeFilterAttribute`/`ServiceFilterAttribute`，断言恰好 1 个。
+
 ## Task 4: 用户 CRUD
 
 > **实现注意点**
@@ -1371,6 +1377,40 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(100, body.GetProperty("data").GetProperty("pageSize").GetInt32());
+    }
+
+    [Fact]
+    public async Task CreateUser_WithBlankUsername_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "   ", "Test@123456", "空白用户名", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateUser_WithBlankDisplayName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "blankname01", "Test@123456", "   ", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUser_WithBlankDisplayName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var created = await CreateUserAsync(client, "blankupdate01");
+
+        var response = await client.PutAsJsonAsync($"/api/users/{created}", new UpdateUserRequest(
+            null, "   ", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static async Task<int> CreateUserAsync(HttpClient client, string username)
@@ -1642,7 +1682,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "FullyQualifiedName~UserApiTests"
 ```
 
-Expected: 12 个用例全部 PASS。
+Expected: 15 个用例全部 PASS。
 
 - [ ] **Step 8: 提交**
 
@@ -1808,6 +1848,28 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
         var response = await client.DeleteAsync($"/api/roles/{created}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateRole_WithBlankCode_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("   ", "空白编码角色", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateRole_WithBlankName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("blankname01", "   ", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static async Task<int> CreateRoleAsync(HttpClient client, string code)
@@ -2062,7 +2124,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "FullyQualifiedName~RoleApiTests"
 ```
 
-Expected: 8 个用例全部 PASS。
+Expected: 10 个用例全部 PASS。
 
 - [ ] **Step 8: 提交**
 
@@ -2290,7 +2352,7 @@ cd /m/ClaudeCode/AITrainingDemo
 dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 ```
 
-Expected: 全部 PASS（Task 2 的 6 + Task 3 的 10 + Task 4 的 12 + Task 5 的 8 + Task 6 的 2 = 38 个用例）。
+Expected: 全部 PASS（Task 2 的 6 + Task 3 的 10 + Task 4 的 15 + Task 5 的 10 + Task 6 的 2 + 异常过滤器 1 = 44 个用例）。
 
 - [ ] **Step 7: 提交**
 

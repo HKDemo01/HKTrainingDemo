@@ -111,6 +111,28 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Fact]
+    public async Task CreateRole_WithBlankCode_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("   ", "空白编码角色", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateRole_WithBlankName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/roles",
+            new CreateRoleRequest("blankname01", "   ", null));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static async Task<int> CreateRoleAsync(HttpClient client, string code)
     {
         var response = await client.PostAsJsonAsync("/api/roles",

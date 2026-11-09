@@ -161,6 +161,40 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
         Assert.True(data.GetProperty("total").GetInt32() >= 2);
     }
 
+    [Fact]
+    public async Task CreateUser_WithBlankUsername_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "   ", "Test@123456", "空白用户名", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateUser_WithBlankDisplayName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+
+        var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(
+            "blankname01", "Test@123456", "   ", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUser_WithBlankDisplayName_Returns400()
+    {
+        var client = await CreateAuthenticatedClientAsync();
+        var created = await CreateUserAsync(client, "blankupdate01");
+
+        var response = await client.PutAsJsonAsync($"/api/users/{created}", new UpdateUserRequest(
+            null, "   ", null, null, true));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static async Task<int> CreateUserAsync(HttpClient client, string username)
     {
         var response = await client.PostAsJsonAsync("/api/users", new CreateUserRequest(

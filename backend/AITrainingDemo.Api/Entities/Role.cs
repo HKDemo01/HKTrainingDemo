@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace AITrainingDemo.Api.Entities;
 
 public class Role
@@ -7,5 +9,6 @@ public class Role
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
+    [JsonIgnore]
     public ICollection<User> Users { get; set; } = new List<User>();
 }

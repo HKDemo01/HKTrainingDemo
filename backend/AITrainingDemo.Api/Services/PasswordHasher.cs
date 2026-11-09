@@ -23,6 +23,12 @@ public class PasswordHasher : IPasswordHasher
             return false;
         }
 
+        // 存储哈希为 null 时同样直接判定失败，避免 Split 抛 NullReferenceException
+        if (string.IsNullOrEmpty(storedHash))
+        {
+            return false;
+        }
+
         var parts = storedHash.Split('.');
         if (parts.Length != 2)
         {

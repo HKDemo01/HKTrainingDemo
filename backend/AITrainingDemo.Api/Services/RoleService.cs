@@ -52,16 +52,21 @@ public class RoleService(AppDbContext db) : IRoleService
 
     public async Task<RoleDto> CreateAsync(CreateRoleRequest request)
     {
-        var code = request.Code.Trim();
-
-        if (await db.Roles.AnyAsync(r => r.Code == code))
+        if (string.IsNullOrWhiteSpace(request.Code))
         {
-            throw new BusinessException(409, "角色编码已存在");
+            throw new BusinessException(400, "角色编码不能为空");
         }
 
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             throw new BusinessException(400, "角色名称不能为空");
+        }
+
+        var code = request.Code.Trim();
+
+        if (await db.Roles.AnyAsync(r => r.Code == code))
+        {
+            throw new BusinessException(409, "角色编码已存在");
         }
 
         var role = new Role

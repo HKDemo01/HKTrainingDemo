@@ -44,16 +44,26 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request)
     {
-        var username = request.Username.Trim();
-
-        if (await db.Users.AnyAsync(u => u.Username == username))
+        if (string.IsNullOrWhiteSpace(request.Username))
         {
-            throw new BusinessException(409, "用户名已存在");
+            throw new BusinessException(400, "用户名不能为空");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.DisplayName))
+        {
+            throw new BusinessException(400, "姓名不能为空");
         }
 
         if (string.IsNullOrWhiteSpace(request.Password))
         {
             throw new BusinessException(400, "密码不能为空");
+        }
+
+        var username = request.Username.Trim();
+
+        if (await db.Users.AnyAsync(u => u.Username == username))
+        {
+            throw new BusinessException(409, "用户名已存在");
         }
 
         await EnsureRoleExistsAsync(request.RoleId);
@@ -84,6 +94,11 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
         }
 
         await EnsureRoleExistsAsync(request.RoleId);
+
+        if (string.IsNullOrWhiteSpace(request.DisplayName))
+        {
+            throw new BusinessException(400, "姓名不能为空");
+        }
 
         user.DisplayName = request.DisplayName.Trim();
         user.Email = request.Email;
