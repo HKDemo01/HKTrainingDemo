@@ -17,6 +17,12 @@ public class PasswordHasher : IPasswordHasher
 
     public bool Verify(string password, string storedHash)
     {
+        // 空口令直接判定为失败，避免 Pbkdf2 抛 ArgumentNullException 被当成 500 错误
+        if (string.IsNullOrEmpty(password))
+        {
+            return false;
+        }
+
         var parts = storedHash.Split('.');
         if (parts.Length != 2)
         {
