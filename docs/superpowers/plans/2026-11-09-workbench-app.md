@@ -819,6 +819,7 @@ git commit -m "feat: scaffold backend project with entity, dbcontext and seed da
 > 2. **异常过滤器注册路径唯一**：`Program.cs` 中 `ApiExceptionFilter` 的注册**只保留一条路径**（`builder.Services.AddScoped<ApiExceptionFilter>();` + `options.Filters.AddService<ApiExceptionFilter>();`）。**不得**再出现 `options.Filters.Add<ApiExceptionFilter>()`，否则异常会被处理两次。
 > 3. **补一条异常映射测试**：新增自动化测试，断言 Service 抛出的 `BusinessException(code, message)` 经 `ApiExceptionFilter` 后，HTTP 状态码 == `code`，且响应体是 `ApiResult` 形状（`code`/`message`/`data` 三字段，`code` 等于业务码、`message` 一致）。
 > 4. **`Jwt:SigningKey` 的来源**：配置键名是 `Jwt:SigningKey`（`appsettings.json` 已有），测试环境由 `AppFactory` 用 `builder.UseSetting("Jwt:SigningKey", ...)` 注入，两边键名必须一致。
+> 5. **登录失败必须是 401，不能是 500**：`AuthService.LoginAsync` 对「用户不存在 / 已停用 / 密码错误」三条路径统一抛 `BusinessException(401, "用户名或密码错误")`，且**错误提示文案必须完全一致**（简报里的 `Login_WithWrongPassword_And_WithUnknownUser_ReturnSame401` 用例断言两个响应体逐字相等）。另外注意 `PasswordHasher.Verify` 收到 `null` 口令时 `Rfc2898DeriveBytes.Pbkdf2` 会抛 `ArgumentNullException` → 500。模型绑定通常会在 `null` 时先返回 400（`InvalidModelStateResponseFactory`），但**空字符串**口令会走到 Service。**补一条测试**：用空口令登录应返回 401（不是 500）；若因此需要在 `PasswordHasher.Verify` 里加 `string.IsNullOrEmpty(password)` 防护，可以加。
 
 **Files:**
 - Create: `backend/AITrainingDemo.Api/Dtos/AuthDtos.cs`
