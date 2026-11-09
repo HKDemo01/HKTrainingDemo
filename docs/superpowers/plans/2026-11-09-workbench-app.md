@@ -2239,7 +2239,13 @@ git commit -m "feat: add dashboard stats api and cors setup"
 >
 > 因此本任务除 `npm run build` 外，**必须**额外做一次运行时验证：启动 `npm run dev`，确认登录页能加载、`/login` 路由不白屏、控制台无 `Cannot access '...' before initialization` 之类的循环依赖报错。若确实报错，用最小改动打破循环（例如把 `router` 的引用改成惰性 `import('@/router')`，或把 store 的取用改成在拦截器回调内动态获取）。
 >
-> 另：`npm create vite@latest` 在非交互终端可能卡住。**优先手工创建** `package.json` / `vite.config.ts` / `index.html` / `tsconfig*.json` 等文件，或使用非交互参数；确保 `npm install` 与 `npm run build` 都能跑通。
+> 另：`npm create vite@latest` 在非交互终端可能卡住。**已实测可用**的非交互命令是：
+> ```bash
+> npm create vite@latest frontend -- --template vue-ts --yes
+> ```
+> （已验证 create-vite 9.x 能正确生成 `index.html` / `package.json` / `vite.config.ts` / `tsconfig*.json` / `src/`，无需任何交互输入。）
+>
+> 注意脚手架模板的 `build` 脚本是 `vue-tsc -b && vite build`，**含 TypeScript 类型检查** —— 这很好，但意味着 `npm run build` 会因任何类型错误失败。模板自带的示例代码（如 `src/components/HelloWorld.vue`、`src/style.css`、`src/assets/vue.svg`）如果没被覆盖，可能引入未使用的导入或类型错误，**按需删除或替换**。
 
 **Files:**
 - Create: `frontend/package.json`（脚手架生成后修改）
