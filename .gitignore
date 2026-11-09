@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+
+# SQLite 数据库
+backend/AITrainingDemo.Api/App_Data/
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# 编辑器
+.vs/
+.idea/
+.DS_Store
+
+# 日志
+*.log
