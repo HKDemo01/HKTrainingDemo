@@ -1,5 +1,8 @@
 # 「工作台」基础应用 实施计划
 
+> **执行状态：本计划已全部执行完毕（Task 1–11），全部步骤已勾选。** 实现已合并到 `main`。
+> 过程中的取舍与裁决记录在 `.superpowers/sdd/2026-11-09-workbench-app/progress.md`（该目录不入库）。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在空仓库中交付一个可直接运行的「工作台」应用 —— .NET 10 WebAPI + EF Core + SQLite 后端，Vue 3 + Element Plus + Axios 前端，具备登录、工作台首页统计、用户与角色两个菜单的完整增删改查。
@@ -124,7 +127,7 @@ frontend/
 - Consumes: 无
 - Produces: 仓库根目录约定；后续所有任务都在此骨架上添加文件。
 
-- [ ] **Step 1: 创建 `.gitignore`**
+- [x] **Step 1: 创建 `.gitignore`**
 
 写入 `M:\ClaudeCode\AITrainingDemo\.gitignore`：
 
@@ -155,7 +158,7 @@ dist-ssr/
 *.log
 ```
 
-- [ ] **Step 2: 创建 `.claude/CLAUDE.md`**
+- [x] **Step 2: 创建 `.claude/CLAUDE.md`**
 
 写入 `M:\ClaudeCode\AITrainingDemo\.claude\CLAUDE.md`：
 
@@ -216,7 +219,7 @@ frontend/src/                  api / stores / router / layout / views
 - 所有界面文案、代码注释、提交信息用**简体中文**；标识符与 API 路径保持英文。
 ```
 
-- [ ] **Step 3: 创建 `README.md` 占位（Task 11 会补全运行说明）**
+- [x] **Step 3: 创建 `README.md` 占位（Task 11 会补全运行说明）**
 
 写入 `M:\ClaudeCode\AITrainingDemo\README.md`：
 
@@ -228,7 +231,7 @@ frontend/src/                  api / stores / router / layout / views
 > 运行说明见本文件末尾（由实施阶段补全）。
 ```
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add .gitignore .claude/CLAUDE.md README.md
@@ -272,7 +275,7 @@ git commit -m "chore: add repo skeleton, project conventions and gitignore"
   - `AITrainingDemo.Api.Entities.Role` — `int Id`、`string Code`、`string Name`、`string? Description`、`DateTime CreatedAt`、`ICollection<User> Users`。
   - `backend/AITrainingDemo.Tests/AppFactory : WebApplicationFactory<Program>` — 供后续任务复用。
 
-- [ ] **Step 1: 创建解决方案与 WebAPI 项目**
+- [x] **Step 1: 创建解决方案与 WebAPI 项目**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -281,7 +284,7 @@ dotnet new webapi -n AITrainingDemo.Api -o backend/AITrainingDemo.Api --use-cont
 dotnet sln backend/AITrainingDemo.sln add backend/AITrainingDemo.Api/AITrainingDemo.Api.csproj
 ```
 
-- [ ] **Step 2: 移除脚手架默认的 OpenAPI 依赖与示例控制器**
+- [x] **Step 2: 移除脚手架默认的 OpenAPI 依赖与示例控制器**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/backend/AITrainingDemo.Api
@@ -292,7 +295,7 @@ rm -f WeatherForecast.cs
 
 （若 `rm` 不可用，改用 `git rm` 或直接删除对应文件。）
 
-- [ ] **Step 3: 添加 NuGet 依赖**
+- [x] **Step 3: 添加 NuGet 依赖**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/backend/AITrainingDemo.Api
@@ -304,7 +307,7 @@ dotnet add package System.IdentityModel.Tokens.Jwt --version 8.3.0
 
 > 若指定版本在源上不存在，去掉 `--version` 让 NuGet 解析当前最新 10.x。
 
-- [ ] **Step 4: 创建测试项目**
+- [x] **Step 4: 创建测试项目**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -314,7 +317,7 @@ dotnet add backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj reference ba
 dotnet add backend/AITrainingDemo.Tests package Microsoft.AspNetCore.Mvc.Testing --version 10.0.0
 ```
 
-- [ ] **Step 5: 创建实体**
+- [x] **Step 5: 创建实体**
 
 `backend/AITrainingDemo.Api/Entities/Role.cs`：
 
@@ -351,7 +354,7 @@ public class User
 }
 ```
 
-- [ ] **Step 6: 创建 `AppDbContext`**
+- [x] **Step 6: 创建 `AppDbContext`**
 
 `backend/AITrainingDemo.Api/Data/AppDbContext.cs`：
 
@@ -391,7 +394,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 }
 ```
 
-- [ ] **Step 7: 创建密码哈希服务**
+- [x] **Step 7: 创建密码哈希服务**
 
 `backend/AITrainingDemo.Api/Services/IPasswordHasher.cs`：
 
@@ -451,7 +454,7 @@ public class PasswordHasher : IPasswordHasher
 }
 ```
 
-- [ ] **Step 8: 创建统一响应与异常处理**
+- [x] **Step 8: 创建统一响应与异常处理**
 
 `backend/AITrainingDemo.Api/Common/ApiResult.cs`：
 
@@ -508,7 +511,7 @@ public class ApiExceptionFilter(ILogger<ApiExceptionFilter> logger) : IException
 }
 ```
 
-- [ ] **Step 9: 创建分页 DTO 与种子初始化**
+- [x] **Step 9: 创建分页 DTO 与种子初始化**
 
 `backend/AITrainingDemo.Api/Dtos/CommonDtos.cs`：
 
@@ -602,7 +605,7 @@ public static class DbInitializer
 }
 ```
 
-- [ ] **Step 10: 写 `appsettings.json`**
+- [x] **Step 10: 写 `appsettings.json`**
 
 `backend/AITrainingDemo.Api/appsettings.json`：
 
@@ -630,7 +633,7 @@ public static class DbInitializer
 }
 ```
 
-- [ ] **Step 11: 写 `Program.cs`（本任务先不含 JWT 鉴权，Task 3 补全）**
+- [x] **Step 11: 写 `Program.cs`（本任务先不含 JWT 鉴权，Task 3 补全）**
 
 `backend/AITrainingDemo.Api/Program.cs`：
 
@@ -676,7 +679,7 @@ app.Run();
 public partial class Program { }
 ```
 
-- [ ] **Step 12: 写测试基座 `AppFactory`**
+- [x] **Step 12: 写测试基座 `AppFactory`**
 
 `backend/AITrainingDemo.Tests/AppFactory.cs`：
 
@@ -732,7 +735,7 @@ public class AppFactory : WebApplicationFactory<Program>
 }
 ```
 
-- [ ] **Step 13: 写数据层测试**
+- [x] **Step 13: 写数据层测试**
 
 `backend/AITrainingDemo.Tests/DataLayerTests.cs`：
 
@@ -797,7 +800,7 @@ public class DataLayerTests
 
 > 需要 `using Microsoft.EntityFrameworkCore;`（`AnyAsync` / `CountAsync`）与 `using Xunit;`（若模板未全局导入 xunit，在文件顶部补 `using Xunit;`）。
 
-- [ ] **Step 14: 运行测试**
+- [x] **Step 14: 运行测试**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -806,7 +809,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 
 Expected: 全部 PASS（6 个用例）。
 
-- [ ] **Step 15: 提交**
+- [x] **Step 15: 提交**
 
 ```bash
 git add backend/ .gitignore
@@ -843,7 +846,7 @@ git commit -m "feat: scaffold backend project with entity, dbcontext and seed da
   - `POST /api/auth/login`（匿名）、`GET /api/auth/me`（需 Bearer）。
   - 约定：JWT Claim 短名 `sub`（用户 Id）、`name`（用户名）、`role`（角色 Code）。
 
-- [ ] **Step 1: 写 DTO**
+- [x] **Step 1: 写 DTO**
 
 `backend/AITrainingDemo.Api/Dtos/AuthDtos.cs`：
 
@@ -857,7 +860,7 @@ public record LoginUserInfo(int Id, string Username, string DisplayName, string?
 public record LoginResponse(string Token, DateTime ExpiresAt, LoginUserInfo User);
 ```
 
-- [ ] **Step 2: 写失败测试**
+- [x] **Step 2: 写失败测试**
 
 `backend/AITrainingDemo.Tests/AuthApiTests.cs`：
 
@@ -951,7 +954,7 @@ public class AuthApiTests(AppFactory factory) : IClassFixture<AppFactory>
 }
 ```
 
-- [ ] **Step 3: 运行测试验证失败**
+- [x] **Step 3: 运行测试验证失败**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -960,7 +963,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: FAIL —— `401`/`404` 等，因为 `/api/auth/login` 尚未实现（404 Not Found）。
 
-- [ ] **Step 4: 实现 `IAuthService` / `AuthService`**
+- [x] **Step 4: 实现 `IAuthService` / `AuthService`**
 
 `backend/AITrainingDemo.Api/Services/IAuthService.cs`：
 
@@ -1047,7 +1050,7 @@ public class AuthService(AppDbContext db, IPasswordHasher hasher, IConfiguration
 }
 ```
 
-- [ ] **Step 5: 实现 `AuthController`**
+- [x] **Step 5: 实现 `AuthController`**
 
 `backend/AITrainingDemo.Api/Controllers/AuthController.cs`：
 
@@ -1084,7 +1087,7 @@ public class AuthController(IAuthService authService) : ControllerBase
 }
 ```
 
-- [ ] **Step 6: 在 `Program.cs` 注册 JWT 鉴权**
+- [x] **Step 6: 在 `Program.cs` 注册 JWT 鉴权**
 
 在 `backend/AITrainingDemo.Api/Program.cs` 中，在 `builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();` 这一行**之后追加**以下代码块（**保留文件中已有的其他所有行，不要删除或改动**；同时在文件顶部补 `using Microsoft.AspNetCore.Authentication.JwtBearer;`、`using Microsoft.IdentityModel.Tokens;`、`using System.Text;`）：
 
@@ -1133,7 +1136,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-- [ ] **Step 7: 运行测试验证通过**
+- [x] **Step 7: 运行测试验证通过**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -1142,7 +1145,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: 6 个用例全部 PASS。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add backend/
@@ -1179,7 +1182,7 @@ git commit -m "feat: add jwt authentication and auth api"
   - `AITrainingDemo.Api.Services.IUserService` — `Task<PagedResult<UserDto>> GetPagedAsync(UserQuery query)`、`Task<UserDto> CreateAsync(CreateUserRequest request)`、`Task<UserDto> UpdateAsync(int id, UpdateUserRequest request)`、`Task DeleteAsync(int id, int currentUserId)`。
   - `GET/POST /api/users`、`PUT/DELETE /api/users/{id}`。
 
-- [ ] **Step 1: 写 DTO**
+- [x] **Step 1: 写 DTO**
 
 `backend/AITrainingDemo.Api/Dtos/UserDtos.cs`：
 
@@ -1214,7 +1217,7 @@ public record UpdateUserRequest(
 public record UserQuery(string? Keyword, int? RoleId, int Page = 1, int PageSize = 20);
 ```
 
-- [ ] **Step 2: 写失败测试**
+- [x] **Step 2: 写失败测试**
 
 `backend/AITrainingDemo.Tests/UserApiTests.cs`：
 
@@ -1434,7 +1437,7 @@ public class UserApiTests(AppFactory factory) : IClassFixture<AppFactory>
 }
 ```
 
-- [ ] **Step 3: 运行测试验证失败**
+- [x] **Step 3: 运行测试验证失败**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -1443,7 +1446,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: FAIL —— 404，`/api/users` 尚未实现。
 
-- [ ] **Step 4: 实现 `IUserService` / `UserService`**
+- [x] **Step 4: 实现 `IUserService` / `UserService`**
 
 `backend/AITrainingDemo.Api/Services/IUserService.cs`：
 
@@ -1613,7 +1616,7 @@ public class UserService(AppDbContext db, IPasswordHasher hasher) : IUserService
 }
 ```
 
-- [ ] **Step 5: 实现 `UsersController`**
+- [x] **Step 5: 实现 `UsersController`**
 
 `backend/AITrainingDemo.Api/Controllers/UsersController.cs`：
 
@@ -1667,7 +1670,7 @@ public class UsersController(IUserService userService) : ControllerBase
 }
 ```
 
-- [ ] **Step 6: 在 `Program.cs` 注册 `IUserService`**
+- [x] **Step 6: 在 `Program.cs` 注册 `IUserService`**
 
 在 `builder.Services.AddScoped<IAuthService, AuthService>();` 下一行加入：
 
@@ -1675,7 +1678,7 @@ public class UsersController(IUserService userService) : ControllerBase
 builder.Services.AddScoped<IUserService, UserService>();
 ```
 
-- [ ] **Step 7: 运行测试验证通过**
+- [x] **Step 7: 运行测试验证通过**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -1684,7 +1687,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: 20 个用例全部 PASS。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add backend/
@@ -1714,7 +1717,7 @@ git commit -m "feat: add user crud api with pagination and role filter"
   - `AITrainingDemo.Api.Services.IRoleService` — `Task<PagedResult<RoleDto>> GetPagedAsync(RoleQuery query)`、`Task<IReadOnlyList<RoleOptionDto>> GetAllAsync()`、`Task<RoleDto> CreateAsync(CreateRoleRequest request)`、`Task<RoleDto> UpdateAsync(int id, UpdateRoleRequest request)`、`Task DeleteAsync(int id)`。
   - `GET /api/roles`（分页）、`GET /api/roles/all`（全量选项）、`POST /api/roles`、`PUT/DELETE /api/roles/{id}`。
 
-- [ ] **Step 1: 写 DTO**
+- [x] **Step 1: 写 DTO**
 
 `backend/AITrainingDemo.Api/Dtos/RoleDtos.cs`：
 
@@ -1732,7 +1735,7 @@ public record UpdateRoleRequest(string Name, string? Description);
 public record RoleQuery(string? Keyword, int Page = 1, int PageSize = 20);
 ```
 
-- [ ] **Step 2: 写失败测试**
+- [x] **Step 2: 写失败测试**
 
 `backend/AITrainingDemo.Tests/RoleApiTests.cs`：
 
@@ -1900,7 +1903,7 @@ public class RoleApiTests(AppFactory factory) : IClassFixture<AppFactory>
 }
 ```
 
-- [ ] **Step 3: 运行测试验证失败**
+- [x] **Step 3: 运行测试验证失败**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -1909,7 +1912,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: FAIL —— 404，`/api/roles` 尚未实现。
 
-- [ ] **Step 4: 实现 `IRoleService` / `RoleService`**
+- [x] **Step 4: 实现 `IRoleService` / `RoleService`**
 
 `backend/AITrainingDemo.Api/Services/IRoleService.cs`：
 
@@ -2051,7 +2054,7 @@ public class RoleService(AppDbContext db) : IRoleService
 }
 ```
 
-- [ ] **Step 5: 实现 `RolesController`**
+- [x] **Step 5: 实现 `RolesController`**
 
 `backend/AITrainingDemo.Api/Controllers/RolesController.cs`：
 
@@ -2109,7 +2112,7 @@ public class RolesController(IRoleService roleService) : ControllerBase
 }
 ```
 
-- [ ] **Step 6: 在 `Program.cs` 注册 `IRoleService`**
+- [x] **Step 6: 在 `Program.cs` 注册 `IRoleService`**
 
 在 `builder.Services.AddScoped<IUserService, UserService>();` 下一行加入：
 
@@ -2117,7 +2120,7 @@ public class RolesController(IRoleService roleService) : ControllerBase
 builder.Services.AddScoped<IRoleService, RoleService>();
 ```
 
-- [ ] **Step 7: 运行测试验证通过**
+- [x] **Step 7: 运行测试验证通过**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -2126,7 +2129,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: 17 个用例全部 PASS。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add backend/
@@ -2156,7 +2159,7 @@ git commit -m "feat: add role crud api with reference protection"
 
 > ⚠️ **分层约束（项目规范 §3）**：Controller 里**禁止**直接注入 `AppDbContext` 写 LINQ 查询。统计逻辑必须放在 `DashboardService` 里，Controller 只负责「调用 Service → 返回 `ApiResult<T>`」。
 
-- [ ] **Step 1: 写 DTO 与失败测试**
+- [x] **Step 1: 写 DTO 与失败测试**
 
 `backend/AITrainingDemo.Api/Dtos/DashboardDtos.cs`：
 
@@ -2215,7 +2218,7 @@ public class DashboardApiTests(AppFactory factory) : IClassFixture<AppFactory>
 }
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -2224,7 +2227,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj --filter "F
 
 Expected: FAIL —— 404。
 
-- [ ] **Step 3: 实现 `DashboardService` 与 `DashboardController`**
+- [x] **Step 3: 实现 `DashboardService` 与 `DashboardController`**
 
 `backend/AITrainingDemo.Api/Services/IDashboardService.cs`：
 
@@ -2290,7 +2293,7 @@ public class DashboardController(IDashboardService dashboardService) : Controlle
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 ```
 
-- [ ] **Step 4: 在 `Program.cs` 开启 CORS**
+- [x] **Step 4: 在 `Program.cs` 开启 CORS**
 
 在 `Program.cs` 的 `using` 区加入 `using Microsoft.AspNetCore.Cors;`（若尚未存在）。
 
@@ -2322,7 +2325,7 @@ app.UseCors();
 > app.MapControllers();
 > ```
 
-- [ ] **Step 5: 固定后端监听地址为 5080**
+- [x] **Step 5: 固定后端监听地址为 5080**
 
 用以下内容覆盖 `backend/AITrainingDemo.Api/Properties/launchSettings.json`：
 
@@ -2345,7 +2348,7 @@ app.UseCors();
 
 > `dotnet run` 会优先采用 `launchSettings.json` 的 `applicationUrl`，因此必须改这里；只改 csproj 的 `<ApplicationUrl>` 不生效。
 
-- [ ] **Step 6: 运行全部后端测试**
+- [x] **Step 6: 运行全部后端测试**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -2354,7 +2357,7 @@ dotnet test backend/AITrainingDemo.Tests/AITrainingDemo.Tests.csproj
 
 Expected: 全部 PASS（Task 2 的 6 + Task 3 的 10 + Task 4 的 20 + Task 5 的 17 + Task 6 的 2 + 异常过滤器 1 = 56 个用例）。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add backend/
@@ -2406,7 +2409,7 @@ git commit -m "feat: add dashboard stats api and cors setup"
   - `src/router/index.ts` 默认导出 router，路由：`/login`、`/`（redirect `/dashboard`）、`/dashboard`、`/users`、`/roles`。
   - `src/views/LoginView.vue` —— 登录表单。
 
-- [ ] **Step 1: 脚手架生成前端工程**
+- [x] **Step 1: 脚手架生成前端工程**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -2422,7 +2425,7 @@ npm install element-plus@^2.14.8 @element-plus/icons-vue@^2.3.2 vue-router@^4.6.
 >
 > 脚手架模板的 `build` 脚本是 `vue-tsc -b && vite build`，**含 TypeScript 类型检查** —— 任何类型错误都会让构建失败。模板自带的示例代码（`src/components/HelloWorld.vue`、`src/style.css`、`src/assets/vue.svg`、`src/types.ts`）按需删除或替换。
 
-- [ ] **Step 2: 配置 `vite.config.ts`**
+- [x] **Step 2: 配置 `vite.config.ts`**
 
 用以下内容覆盖 `frontend/vite.config.ts`：
 
@@ -2450,7 +2453,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 3: 写类型定义 `src/types/index.ts`**
+- [x] **Step 3: 写类型定义 `src/types/index.ts`**
 
 ```ts
 export interface ApiResult<T> {
@@ -2544,7 +2547,7 @@ export interface UpdateRoleRequest {
 }
 ```
 
-- [ ] **Step 4: 写 axios 实例 `src/api/request.ts`**
+- [x] **Step 4: 写 axios 实例 `src/api/request.ts`**
 
 ```ts
 import axios from 'axios'
@@ -2595,7 +2598,7 @@ request.interceptors.response.use(
 export default request
 ```
 
-- [ ] **Step 5: 写 API 封装**
+- [x] **Step 5: 写 API 封装**
 
 `src/api/auth.ts`：
 
@@ -2673,7 +2676,7 @@ export const rolesApi = {
 }
 ```
 
-- [ ] **Step 6: 写 `src/stores/auth.ts`**
+- [x] **Step 6: 写 `src/stores/auth.ts`**
 
 ```ts
 import { defineStore } from 'pinia'
@@ -2715,7 +2718,7 @@ export const useAuthStore = defineStore('auth', {
 })
 ```
 
-- [ ] **Step 7: 写 `src/router/index.ts`**
+- [x] **Step 7: 写 `src/router/index.ts`**
 
 ```ts
 import { createRouter, createWebHistory } from 'vue-router'
@@ -2784,7 +2787,7 @@ export default router
 > </template>
 > ```
 
-- [ ] **Step 8: 写 `src/main.ts` 与 `src/App.vue`**
+- [x] **Step 8: 写 `src/main.ts` 与 `src/App.vue`**
 
 `src/main.ts`：
 
@@ -2820,7 +2823,7 @@ app.mount('#app')
 </template>
 ```
 
-- [ ] **Step 9: 写登录页 `src/views/LoginView.vue`**
+- [x] **Step 9: 写登录页 `src/views/LoginView.vue`**
 
 ```vue
 <template>
@@ -2937,7 +2940,7 @@ async function submit() {
 </style>
 ```
 
-- [ ] **Step 10: 构建验证**
+- [x] **Step 10: 构建验证**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -2946,7 +2949,7 @@ npm run build
 
 Expected: 构建成功，无 TypeScript 报错。
 
-- [ ] **Step 11: 提交**
+- [x] **Step 11: 提交**
 
 ```bash
 git add frontend/
@@ -2972,7 +2975,7 @@ git commit -m "feat: 搭建前端脚手架与登录页"
   - `src/layout/AppLayout.vue` —— 侧边栏（或 ≤768px 的抽屉菜单）+ 顶栏（标题 + 用户下拉退出）。
   - `src/views/DashboardView.vue` —— 欢迎语 + 用户/角色统计卡 + 快捷入口。
 
-- [ ] **Step 1: 写 `src/api/dashboard.ts`**
+- [x] **Step 1: 写 `src/api/dashboard.ts`**
 
 ```ts
 import request from './request'
@@ -2985,7 +2988,7 @@ export const dashboardApi = {
 }
 ```
 
-- [ ] **Step 2: 写菜单组件 `src/layout/AppMenu.vue`**
+- [x] **Step 2: 写菜单组件 `src/layout/AppMenu.vue`**
 
 桌面端侧边栏与移动端抽屉共用同一份菜单，单独抽成组件避免重复。
 
@@ -3031,7 +3034,7 @@ const route = useRoute()
 </style>
 ```
 
-- [ ] **Step 3: 写布局 `src/layout/AppLayout.vue`**
+- [x] **Step 3: 写布局 `src/layout/AppLayout.vue`**
 
 设计文档 §4.4 要求「菜单在 ≤768px 折叠为抽屉」，因此用 `matchMedia` 判断窄屏：窄屏时隐藏侧边栏，顶栏左侧出现菜单按钮，点开 `el-drawer` 承载同一份 `AppMenu`。
 
@@ -3187,7 +3190,7 @@ function handleCommand(command: string) {
 </style>
 ```
 
-- [ ] **Step 4: 写工作台首页 `src/views/DashboardView.vue`**
+- [x] **Step 4: 写工作台首页 `src/views/DashboardView.vue`**
 
 ```vue
 <template>
@@ -3278,7 +3281,7 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 5: 去掉 `src/main.ts` 的图标全局注册**
+- [x] **Step 5: 去掉 `src/main.ts` 的图标全局注册**
 
 `main.ts` 里遍历 `ElementPlusIconsVue` 把 300 多个图标全部注册成全局组件，但各处用到的图标都已按需 `import`。全局注册只增加产物体积，没有实际作用，删掉即可：
 
@@ -3301,7 +3304,7 @@ app.use(ElementPlus, { locale: zhCn })
 app.mount('#app')
 ```
 
-- [ ] **Step 6: 构建验证**
+- [x] **Step 6: 构建验证**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -3310,7 +3313,7 @@ npm run build
 
 Expected: 构建成功。
 
-- [ ] **Step 7: 提交**
+- [x] **Step 7: 提交**
 
 ```bash
 git add frontend/
@@ -3328,7 +3331,7 @@ git commit -m "feat: 新增应用布局与工作台首页"
 - Consumes: `usersApi.getPaged/create/update/remove`（Task 7）、`rolesApi.getAll`（Task 7）、`useAuthStore()`。
 - Produces: 用户管理页 —— 搜索栏、表格、分页、新增/编辑弹窗、删除确认。
 
-- [ ] **Step 1: 写页面 `src/views/UsersView.vue`**
+- [x] **Step 1: 写页面 `src/views/UsersView.vue`**
 
 ```vue
 <template>
@@ -3619,7 +3622,7 @@ onMounted(async () => {
 </style>
 ```
 
-- [ ] **Step 2: 构建验证**
+- [x] **Step 2: 构建验证**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -3628,7 +3631,7 @@ npm run build
 
 Expected: 构建成功。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add frontend/
@@ -3646,7 +3649,7 @@ git commit -m "feat: 新增用户管理页"
 - Consumes: `rolesApi.getPaged/getAll/create/update/remove`（Task 7）。
 - Produces: 角色管理页 —— 搜索栏、表格（含关联用户数）、分页、新增/编辑弹窗、删除确认（被引用时禁用）。
 
-- [ ] **Step 1: 写页面 `src/views/RolesView.vue`**
+- [x] **Step 1: 写页面 `src/views/RolesView.vue`**
 
 ```vue
 <template>
@@ -3866,7 +3869,7 @@ onMounted(load)
 </style>
 ```
 
-- [ ] **Step 2: 构建验证**
+- [x] **Step 2: 构建验证**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -3875,7 +3878,7 @@ npm run build
 
 Expected: 构建成功。
 
-- [ ] **Step 3: 提交**
+- [x] **Step 3: 提交**
 
 ```bash
 git add frontend/
@@ -3894,7 +3897,7 @@ git commit -m "feat: 新增角色管理页"
 - Consumes: Task 2–10 全部产出。
 - Produces: 可复现的运行说明；一次通过的真实前后端联调记录。
 
-- [ ] **Step 1: 跑全部后端测试与前端构建**
+- [x] **Step 1: 跑全部后端测试与前端构建**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo
@@ -3904,7 +3907,7 @@ cd frontend && npm run build
 
 Expected: 测试全部 PASS；前端构建成功。
 
-- [ ] **Step 2: 启动后端**
+- [x] **Step 2: 启动后端**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/backend/AITrainingDemo.Api
@@ -3913,7 +3916,7 @@ dotnet run
 
 预期输出：`Now listening on: http://localhost:5080`。
 
-- [ ] **Step 3: 用 curl 验证登录接口**
+- [x] **Step 3: 用 curl 验证登录接口**
 
 ```bash
 curl -s -X POST http://localhost:5080/api/auth/login \
@@ -3923,7 +3926,7 @@ curl -s -X POST http://localhost:5080/api/auth/login \
 
 预期返回：`{"code":0,"message":"ok","data":{"token":"eyJ...","expiresAt":"...","user":{"id":1,...}}}`。
 
-- [ ] **Step 4: 用 curl 验证受保护接口（不带 token 应 401）**
+- [x] **Step 4: 用 curl 验证受保护接口（不带 token 应 401）**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}" http://localhost:5080/api/users
@@ -3931,7 +3934,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:5080/api/users
 
 预期：`401`。
 
-- [ ] **Step 5: 启动前端并做浏览器冒烟**
+- [x] **Step 5: 启动前端并做浏览器冒烟**
 
 ```bash
 cd /m/ClaudeCode/AITrainingDemo/frontend
@@ -3959,7 +3962,7 @@ npm run dev
 
 > 第 13 条验证时注意 `backend/AITrainingDemo.Api/App_Data/workbench.db` 已生成且未被 git 跟踪。
 
-- [ ] **Step 6: 补全 `README.md`**
+- [x] **Step 6: 补全 `README.md`**
 
 用以下内容覆盖 `README.md`：
 
@@ -4053,7 +4056,7 @@ docs/superpowers/         设计文档与实施计划
 项目规范见 [`.claude/CLAUDE.md`](.claude/CLAUDE.md)。
 ````
 
-- [ ] **Step 7: 确认没有把数据库文件提交进仓库**
+- [x] **Step 7: 确认没有把数据库文件提交进仓库**
 
 ```bash
 git status --porcelain
@@ -4061,7 +4064,7 @@ git status --porcelain
 
 预期：输出中不包含 `backend/AITrainingDemo.Api/App_Data/` 下的任何文件（已被 `.gitignore` 忽略）。
 
-- [ ] **Step 8: 提交**
+- [x] **Step 8: 提交**
 
 ```bash
 git add README.md
