@@ -62,9 +62,9 @@ frontend/src/                  api / stores / router / layout / views
 
 ## 8. 依赖白名单
 
-- 后端 NuGet **仅允许**：`Microsoft.EntityFrameworkCore.Sqlite`、`Microsoft.EntityFrameworkCore.Design`、`Microsoft.AspNetCore.Authentication.JwtBearer`、`System.IdentityModel.Tokens.Jwt`。
+- 后端 NuGet **仅允许**：`Microsoft.EntityFrameworkCore.Sqlite`、`Microsoft.EntityFrameworkCore.Design`、`Microsoft.AspNetCore.Authentication.JwtBearer`、`System.IdentityModel.Tokens.Jwt`、`Microsoft.AspNetCore.OpenApi`、`Scalar.AspNetCore`。
 - 测试项目额外允许：`Microsoft.AspNetCore.Mvc.Testing`、`Microsoft.NET.Test.Sdk`、`xunit`、`xunit.runner.visualstudio`。
-- **不引入 Swagger / OpenAPI**（`Swashbuckle`、`Microsoft.AspNetCore.OpenApi` 均不允许）。
+- **不引入 Swashbuckle**：接口文档统一用 .NET 内置的 `Microsoft.AspNetCore.OpenApi` 生成规范 + `Scalar.AspNetCore` 提供交互式 UI，两者都**只在 Development 环境暴露**（`MapOpenApi` / `MapScalarApiReference` 必须包在 `app.Environment.IsDevelopment()` 里）。
 - 前端依赖固定为：Vue 3 + TypeScript + Vite + Element Plus + Vue Router 4 + Pinia + Axios。
 - 前端构建工具链（`typescript`、`vite`、`vue-tsc`、`@vitejs/plugin-vue`、`@vue/tsconfig`、`@types/node`）与 Element Plus 官方图标包 `@element-plus/icons-vue` 同样允许；除此之外**不得新增**前端依赖。
 

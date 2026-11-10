@@ -16,6 +16,7 @@
 | 层 | 选型 |
 |---|---|
 | 后端 | .NET 10 (`net10.0`)、EF Core 10、SQLite、JWT Bearer |
+| 接口文档 | 内置 OpenAPI 生成器 + Scalar 交互式 UI（仅开发环境） |
 | 前端 | Vue 3 + TypeScript + Vite + Element Plus + Vue Router + Pinia + Axios |
 | 测试 | xUnit + `WebApplicationFactory`（SQLite 内存库；并发用例改用临时文件库） |
 
@@ -36,11 +37,25 @@ dotnet run
 
 > ⚠️ 必须在 `backend/AITrainingDemo.Api` 目录下启动后端。SQLite 连接串中的路径是相对当前工作目录的，从仓库根目录启动会把数据库建到错误位置。
 
+### 接口文档
+
+后端用 .NET 10 内置的 OpenAPI 生成器产出规范，再由 Scalar 提供交互式 UI：
+
+| 地址 | 内容 |
+|---|---|
+| <http://localhost:5080/scalar> | Scalar 交互式接口文档（可直接发请求调试） |
+| <http://localhost:5080/openapi/v1.json> | OpenAPI 3.1 规范 JSON |
+
+调试受保护接口的步骤：先在 Scalar 里调 `POST /api/auth/login` 拿到 `token`，再在任意接口的 **Auth → Bearer** 里填入该 token（也可以在 **Headers** 里手填 `Authorization: Bearer <token>`）。
+
+> 接口文档**只在 Development 环境暴露**，生产环境不提供——文档是无鉴权的公开资源，对外提供等于泄露接口清单。
+
 ### 生产部署注意
 
 - **必须用环境变量提供 `Jwt:SigningKey`**，例如 `Jwt__SigningKey`。仓库内的签名密钥只存在于 `appsettings.Development.json`（仅开发环境加载，且**不会**随 `dotnet publish` 进入发布产物）。
 - 后端有三重启动保护：密钥缺失或短于 32 字节 → 拒绝启动；**非 Development 环境检测到仓库内的演示密钥 → 拒绝启动**；Development 环境使用演示密钥 → 启动日志显式告警（该密钥是公开的，token 可被伪造）。
 - **`EnsureCreated()` 不会演进既有表结构**。修改实体字段后需要删除 `App_Data/workbench.db` 重建数据库，种子数据会自动重新写入。
+- **生产环境不提供接口文档**：`/scalar` 与 `/openapi/v1.json` 仅在 Development 环境注册。
 
 ## 启动前端
 

@@ -4,10 +4,13 @@ using AITrainingDemo.Api.Common;
 using AITrainingDemo.Api.Data;
 using AITrainingDemo.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +30,46 @@ builder.Services.AddControllers(options => options.Filters.AddService<ApiExcepti
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 接口文档：.NET 内置的 OpenAPI 生成器 + Scalar 交互式 UI
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        // 默认标题取的是程序集名，改成可读的应用名
+        document.Info ??= new OpenApiInfo();
+        document.Info.Title = "AITrainingDemo 工作台 API";
+        document.Info.Version = "v1";
+
+        // 声明 Bearer 鉴权方案，Scalar 的 Auth 面板就能直接填 token 调试受保护接口
+        var components = document.Components ??= new OpenApiComponents();
+        var securitySchemes = components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        securitySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "先调用 /api/auth/login 获取 token，再填入 Bearer <token>"
+        };
+        return Task.CompletedTask;
+    });
+
+    options.AddOperationTransformer((operation, context, cancellationToken) =>
+    {
+        // 只给标了 [Authorize] 的接口挂上 Bearer 要求，登录等公开接口不应被标为需要鉴权
+        var requiresAuth = context.Description.ActionDescriptor.EndpointMetadata.OfType<AuthorizeAttribute>().Any();
+        if (requiresAuth)
+        {
+            operation.Security ??= [];
+            operation.Security.Add(new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("Bearer", context.Document)] = []
+            });
+        }
+        return Task.CompletedTask;
+    });
+});
 
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -153,6 +196,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 接口文档只在开发环境暴露：文档是无鉴权的公开资源，生产环境对外提供等于泄露接口清单
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference("/scalar", options =>
+    {
+        options.Title = "AITrainingDemo 工作台 API";
+        // 默认字体从 CDN 拉取，离线环境会加载失败，改用系统自带字体
+        options.DisableDefaultFonts();
+    });
+}
 
 using (var scope = app.Services.CreateScope())
 {
